@@ -1,0 +1,42 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Configuration files with secrets
+config.ini
+config.json
+secrets.json
+secrets.yaml
+
+# Database files (if using SQLite locally)
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python (if using Python)
+__pycache__/
+*.pyc
+.venv/
+env/
+
+# Node modules (if using Node.js)
+node_modules/
+
+# Backup files
+*.bak
+*.backup
