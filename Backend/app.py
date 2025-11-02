@@ -12,7 +12,7 @@ app = Flask(__name__)
 db_config = {
     'host': 'localhost',
     'user': 'root',
-    'password': os.getenv('DB_PASSWORD'),
+    'password': os.getenv('DB_PASSWORD'), #make a .env file and store your mysql connection password
     'database': 'matchtracker'
 }
 
