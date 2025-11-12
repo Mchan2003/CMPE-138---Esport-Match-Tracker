@@ -76,9 +76,9 @@ CREATE TABLE Venue(
 
 
 CREATE TABLE PrizePool(
-    prize_pool_id          VARCHAR(6),
-    prize_pool_id_amount   INT,
-    prize_pool_id_currency TEXT
+    prize_pool_id       VARCHAR(6) PRIMARY KEY,
+    prize_pool_amount   INT,
+    prize_pool_currency TEXT
     -- INSERT DERIVED --
 );
 
@@ -187,7 +187,7 @@ INSERT INTO Venue (venue_id, venue_name, venue_location, venue_capacity) VALUES
 ('V005', 'Accor Arena', 'Paris, France', 20300);
 
 -- Insert Prize Pools
-INSERT INTO PrizePool (prize_pool_id, prize_pool_id_amount, prize_pool_id_currency) VALUES
+INSERT INTO PrizePool (prize_pool_id, prize_pool_amount, prize_pool_currency) VALUES
 ('PP001', 2000000, 'USD'),
 ('PP002', 1500000, 'USD'),
 ('PP003', 40000000, 'USD'),
