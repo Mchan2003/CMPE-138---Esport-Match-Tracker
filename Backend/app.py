@@ -39,16 +39,6 @@ def get_db_connection():
     except Error as e:
         print(f"Error connecting to MySQL: {e}")
         return None
-    
-def get_column_names(connection, table_name):
-    cursor = connection.cursor()
-    try:
-        cursor.execute(f"SELECT * FROM {table_name} LIMIT 0")
-        cursor.fetchall() 
-        column_names = [desc[0] for desc in cursor.description]
-        return column_names
-    finally:
-        cursor.close()
 
 @app.route('/getTable', methods=['POST']) 
 def get_table():
