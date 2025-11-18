@@ -1,1 +1,61 @@
-<!-- add frontend -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Esport Tracker</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="">
+  </head>
+  <body>
+    <h1>Placeholder header</h1>
+    <label for="games">Choose a game:</label>
+    <select id="games">
+      <option selected>Loading...</option>
+    </select>
+    <div id="test" style="white-space:pre; font-family:ui-monospace, SFMono-Regular, Menlo, monospace;"></div>
+
+    <script>
+    (async () => {
+      const url = "http://127.0.0.1:5000/getTable";
+      const select = document.getElementById("games");
+
+      try {
+        const resp = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ table_name: "Game" }),
+        });
+
+        if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
+
+        const payload = await resp.json();
+        
+        const games = Array.isArray(payload) ? payload
+                    : Array.isArray(payload.rows) ? payload.rows
+                    : Array.isArray(payload.data) ? payload.data
+                    : [payload];
+
+        if (games.length === 0) {
+          select.innerHTML = '<option disabled selected>No games found</option>';
+          return;
+        }
+
+        for (const g of games) {
+          const name = g.game_name ?? g.name ?? g.title ?? "";
+          const id = g.game_id ?? g.id ?? name;
+          if (!name) continue;
+
+          select.add( new Option(name, id));
+        }
+
+        select.insertAdjacentHTML("afterbegin",`<option disabled selected>Select a game…</option>`);
+
+      } catch (err) {
+        testDiv.textContent = `Request failed: ${err.message}`;
+      }
+    })();
+    </script>
+  </body>
+</html>
