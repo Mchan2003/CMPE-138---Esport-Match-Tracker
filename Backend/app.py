@@ -18,13 +18,21 @@ db_config = {
     'database': 'matchtracker'
 }
 
-VALID_TABLE = ['game', 'tornament', 'matchInfo', 'team', 'player',
-               'place', 'venue', 'prizepool', 'sponser', 'commentator',
-               'organizer', 'manager', 'coach']
-
-VALID_PRIMARY_KEY = ['game_id', 'tornament_id', 'matchInfo_id', 'team_id', 'player_id',
-                     'place_id', 'venue_id', 'prizepool_id', 'sponser_id', 'commentator_id',
-                     'organizer_id', 'manager_id', 'coach_id']
+VALID_TABLE = {
+    'game': 'game_id', 
+    'tournament': 'tournament_id', 
+    'matchinfo': 'matchinfo_id', 
+    'team': 'team_id', 
+    'player': 'player_id',
+    'place': 'place_id', 
+    'venue': 'venue_id', 
+    'prizepool': 'prizepool_id', 
+    'sponsor': 'sponsor_id',  
+    'commentator': 'commentator_id',
+    'organizer': 'organizer_id', 
+    'manager': 'manager_id', 
+    'coach': 'coach_id'
+}
 
 def get_db_connection():
     try:
@@ -39,21 +47,29 @@ def get_table():
     connection = get_db_connection()
     if connection is None:
         return jsonify({'error': 'Database connection failed'}), 500
-    
-    data = request.get_json()
-    table_name = data.get('table_name').lower()
-    
-    if table_name not in VALID_TABLE:
-        return jsonify({'error': 'Invalid table name'}), 400
+    cursor = None 
 
     try: 
+        data = request.get_json(force=True)
+        table_name = data.get('table_name')
+
+        if table_name is None:
+            return jsonify({'error': 'Invalid input. Check json key format'}), 400
+
+        table_name = table_name.lower();
+        if table_name not in VALID_TABLE.keys():
+            return jsonify({'error': 'Invalid table name'}), 400   
+
         cursor = connection.cursor(dictionary=True)
-        cursor.execute(f"Select * From {table_name};")
+        query = f"Select * From {table_name};"
+        cursor.execute(query)
         table = cursor.fetchall()
         cursor.close()
         connection.close()
         return jsonify(table)
-    except: 
+    except Exception as e:  
+        if connection:
+            connection.rollback()  
         return jsonify({'error: str(e)'}), 500
     finally:
         if cursor:
@@ -66,26 +82,30 @@ def get_entry():
     connection = get_db_connection()
     if connection is None:
         return jsonify({'error': 'Database connection failed'}), 500
-    
-    data = request.get_json()
-    table_name = data.get('table_name').lower()
-    primary_key = data.get('primary_key').lower()
-    id = data.get('id')
-    
-    if table_name not in VALID_TABLE:
-        return jsonify({'error': 'Invalid table name'}), 400
-    if primary_key not in VALID_PRIMARY_KEY:
-        return jsonify({'error': 'Invalid Primary Key'}), 400
+    cursor = None 
 
     try: 
+        data = request.get_json(force=True)
+        table_name = data.get('table_name')
+        id = data.get('id')
+
+        if table_name is None or id is None:
+            return jsonify({'error': 'Invalid input. Check json format'}), 400
+        table_name = table_name.lower()
+        if table_name not in VALID_TABLE.keys():
+            return jsonify({'error': 'Invalid table name'}), 400
+        primary_key= VALID_TABLE[table_name];
+
         cursor = connection.cursor(dictionary=True)
-        cursor.execute(f"SELECT * FROM {table_name} WHERE {primary_key} = %s", (id,))
+        query = f"SELECT * FROM {table_name} WHERE {primary_key} = %s"
+        cursor.execute(query, (id,))
         entry = cursor.fetchall()
         cursor.close()
         connection.close()
-        if entry:
-            return jsonify(entry)
+        return jsonify(entry)
     except Exception as e:  
+        if connection:
+            connection.rollback() 
         return jsonify({'error': str(e)}), 500
     finally:
         if cursor:
@@ -98,26 +118,31 @@ def delete_entry():
     connection = get_db_connection()
     if connection is None:
         return jsonify({'error': 'Database connection failed'}), 500
-    
-    data = request.get_json()
-    table_name = data.get('table_name').lower()
-    primary_key = data.get('primary_key').lower()
-    id = data.get('id')
-    
-    if table_name not in VALID_TABLE:
-        return jsonify({'error': 'Invalid table name'}), 400
-    if primary_key not in VALID_PRIMARY_KEY:
-        return jsonify({'error': 'Invalid Primary Key'}), 400
 
     try: 
+        data = request.get_json(force=True)
+        table_name = data.get('table_name')
+        id = data.get('id')
+
+        if table_name is None or id is None:
+            return jsonify({'error': 'Invalid input. Check json format'}), 400
+        table_name = table_name.lower()
+        if table_name not in VALID_TABLE.keys():
+            return jsonify({'error': 'Invalid table name'}), 400
+        primary_key= VALID_TABLE[table_name];
+
         cursor = connection.cursor(dictionary=True)
-        cursor.execute(f"DELETE FROM {table_name} WHERE {primary_key} = %s", (id,))
-        entry = cursor.fetchall()
-        cursor.close()
-        connection.close()
-        if entry:
-            return jsonify(entry)
-    except Exception as e:  
+        query = f"DELETE FROM {table_name} WHERE {primary_key} = %s"
+        cursor.execute(query, (id,))
+        connection.commit()
+        return jsonify({
+            'success': True, 
+            'message': 'Entry Deleted',
+            'rows_affected': cursor.rowcount
+        }), 201
+    except Exception as e:
+        if connection:
+            connection.rollback()   
         return jsonify({'error': str(e)}), 500
     finally:
         if cursor:
@@ -136,7 +161,7 @@ def insert_entry():
         data = request.get_json()
         table_name = data.get('table_name').lower()
         entry = data.get('entry')
-        
+
         if table_name is None or entry is None:
             return jsonify({'error': 'Invalid input. Check json format'}), 400
         table_name = table_name.lower()
@@ -176,7 +201,7 @@ def update_entry():
         table_name = data.get('table_name').lower()
         id = data.get('id')
         update_colms = data.get('update_colms')
-        
+
         if table_name is None or update_colms is None or id is None:
             return jsonify({'error': 'Invalid input. Check json format'}), 400
         table_name = table_name.lower()
@@ -187,12 +212,12 @@ def update_entry():
 
         set_clause = ", ".join([f"{key} = %s" for key in update_colms.keys()])
         query = f"UPDATE {table_name} SET {set_clause} WHERE {primary_key} = %s"
-        
+
         cursor = connection.cursor(dictionary=True)
         values = list(update_colms.values()) + [id]
         cursor.execute(query, values)
         connection.commit()
-        
+
         return jsonify({
             'success': True, 
             'message': 'Entry updated',
