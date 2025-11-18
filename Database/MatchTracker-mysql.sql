@@ -5,6 +5,14 @@ DROP DATABASE IF EXISTS MatchTracker;
 CREATE DATABASE MatchTracker;
 USE MatchTracker;
 
+CREATE TABLE UserAccount (
+    user_id        INT AUTO_INCREMENT PRIMARY KEY,
+    username       VARCHAR(50) UNIQUE NOT NULL,
+    password_hash  VARCHAR(255) NOT NULL,
+    role           ENUM('admin', 'user') DEFAULT 'user'
+);
+
+
 CREATE TABLE Game(
     game_id VARCHAR(6) PRIMARY KEY, 
     game_name VARCHAR(50) NOT NULL,
