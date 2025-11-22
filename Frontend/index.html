@@ -3,23 +3,56 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>Esport Tracker</title>
+    <title>Esports Match Tracker</title>
     <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="">
+    <style>
+      body {
+        background-color: beige;
+      }
+        .container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+        gap: 5px;
+        padding: 5px;
+        width: 100%;
+        box-sizing: border-box;
+        background: black;
+      }
+      .item { 
+        padding: 10px 16px;
+        background: #f1f1f1;
+        font-size: 20px;
+        text-align: center;
+        white-space: normal;
+        overflow-wrap: anywhere;
+      }
+    </style>
   </head>
   <body>
-    <h1>Placeholder header</h1>
-    <label for="games">Choose a game:</label>
-    <select id="games">
-      <option selected>Loading...</option>
+    <h1>Esports Match Tracker</h1>
+    <label for="game_select">Choose a game:</label>
+    <select id="game_select">
+      <option disabled selected>Select a game…</option>
     </select>
-    <div id="test" style="white-space:pre; font-family:ui-monospace, SFMono-Regular, Menlo, monospace;"></div>
-
+    <h2 id="game_header"></h2>
+      <div class="container">
+        <div class="item">Teams</div>
+        <div class="item">Players</div>
+        <div class="item">Tournaments</div>
+        <div class="item">Organizers</div>
+      </div>
+    <!--
+      TODO:
+      1. ADD PULLING AND DISPLAYING DATA FOR EACH COLUMN IN THE DIV CONTAINER
+      2. ADD HIDDEN BUTTONS ON EACH DATA ITEM TO COLLAPSE OTHER ITEMS AND 
+      DISPLAY ALL TABLES RELATED TO CLICKED ITEMS
+    -->
     <script>
     (async () => {
       const url = "http://127.0.0.1:5000/getTable";
-      const select = document.getElementById("games");
+      const select = document.getElementById("game_select");
 
       try {
         const resp = await fetch(url, {
@@ -50,12 +83,26 @@
           select.add( new Option(name, id));
         }
 
-        select.insertAdjacentHTML("afterbegin",`<option disabled selected>Select a game…</option>`);
-
       } catch (err) {
         testDiv.textContent = `Request failed: ${err.message}`;
       }
     })();
+    </script>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const gameSelector = document.getElementById('game_select');
+        const gameHeader = document.getElementById('game_header');
+
+        function updateHeader() {
+          const sel = gameSelector.selectedOptions[0];
+          gameHeader.textContent = sel && sel.value ? sel.text : 'select a game...';
+        }
+
+        gameSelector.addEventListener('change', updateHeader);
+
+        updateHeader();
+      });
     </script>
   </body>
 </html>
