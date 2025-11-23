@@ -90,7 +90,7 @@ def register():
     cursor = None
     try:
         cursor = connection.cursor()
-        query = curosr.execute(query, (username, password_hash, 'user')) # default to 'user' role
+        query = cursor.execute(query, (username, password_hash, 'user')) # default to 'user' role
         connection.commit()
 
         return jsonify({
