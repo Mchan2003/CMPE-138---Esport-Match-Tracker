@@ -10,14 +10,14 @@ load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
-app.secret_key = "super_secret_key" 
+app.secret_key = 'super_secret_key'
 
 # Database configuration
 db_config = {
     'host': 'localhost',
     'user': 'root',
     'password': os.getenv('DB_PASSWORD'), #make a .env file and store your mysql connection password
-    'database': 'matchtracker'
+    'database': 'MatchTracker'
 }
 
 VALID_TABLE = ['game', 'tornament', 'matchInfo', 'team', 'player',
@@ -36,20 +36,24 @@ def get_db_connection():
         print(f"Error connecting to MySQL: {e}")
         return None
 
-def get_user_by_username():
-    """
-    Looks up a user by username in the UserAccount Table
-    Returns user's information or None if not found.
-    Simply reads from Database
-    """
+def get_user_by_username(username: str):
+    
+    # Looks up a user by username in the UserAccount Table
+    # Returns user's information or None if not found.
+    # Simply reads from Database
+    
     connection = get_db_connection()
     if connection is None:
         return None
     
     cursor = None
     try: 
-        cursor = connection.cursor(dicitonary=True)
-        query = "SELECT user_id, username, password_hash, role FROM UserAccount WHERE username = %s"
+        cursor = connection.cursor(dictionary=True)
+        query = """
+            SELECT user_id, username, password_hash, role 
+            FROM UserAccount 
+            WHERE username = %s
+        """
         cursor.execute(query, (username,))
         user = cursor.fetchone()
         return user
@@ -59,13 +63,15 @@ def get_user_by_username():
         if connection:
             connection.close()
 
-@app.route('/regisiter', methods['POST'])
+@app.route('/register', methods=['POST'])
 def register():
+
     """
     Register a new user.
     Expects JSON: { "username": "...", "password": "..." }
-    """
-    data = requeset.get_json() or {}
+    """ 
+
+    data = request.get_json(force=True) or {}
     username = data.get('username')
     password = data.get('password')
 
@@ -78,9 +84,10 @@ def register():
         return jsonify({'error': 'username already exists'}), 400
 
     # 3. Hash password with bcyrpt
-    # - encode(): str -> bytes
-    # - decode(): bytes -> str (for storing in VARCHAR)
-    password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    password_hash = bcrypt.hashpw(
+        password.encode('utf-8'), 
+        bcrypt.gensalt()
+    ).decode('utf-8')
 
     # 4. Insert into UserAccount Table
     connection = get_db_connection()
@@ -90,7 +97,11 @@ def register():
     cursor = None
     try:
         cursor = connection.cursor()
-        query = cursor.execute(query, (username, password_hash, 'user')) # default to 'user' role
+        query = """
+            INSERT INTO UserAccount(username, password_hash, role)
+            VALUES (%s, %s, %s)
+        """
+        cursor.execute(query, (username, password_hash, 'user')) # default to 'user' role
         connection.commit()
 
         return jsonify({
