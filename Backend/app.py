@@ -36,12 +36,9 @@ def get_db_connection():
         print(f"Error connecting to MySQL: {e}")
         return None
 
+# Get user record from database using username
 def get_user_by_username(username: str):
-    
-    # Looks up a user by username in the UserAccount Table
-    # Returns user's information or None if not found.
-    # Simply reads from Database
-    
+        
     connection = get_db_connection()
     if connection is None:
         return None
@@ -63,33 +60,29 @@ def get_user_by_username(username: str):
         if connection:
             connection.close()
 
+# User Registration Endpoint:
+# Registers a new user account (creates username, hashed password, and default role)
 @app.route('/register', methods=['POST'])
 def register():
-
-    """
-    Register a new user.
-    Expects JSON: { "username": "...", "password": "..." }
-    """ 
-
     data = request.get_json(force=True) or {}
     username = data.get('username')
     password = data.get('password')
 
-    # 1. Validation
+    # Check if both username and password are included
     if not username or not password:
         return jsonify({'error': 'username and password required'}), 400
     
-    # 2. Check if username already exists
+    # Check if username is already taken
     if get_user_by_username(username):
         return jsonify({'error': 'username already exists'}), 400
 
-    # 3. Hash password with bcyrpt
+    # Hash password using bcrypt
     password_hash = bcrypt.hashpw(
         password.encode('utf-8'), 
         bcrypt.gensalt()
     ).decode('utf-8')
 
-    # 4. Insert into UserAccount Table
+    # Connect to database
     connection = get_db_connection()
     if connection is None:
         return jsonify({'error': 'Database connection failed'}), 500
@@ -123,6 +116,8 @@ def register():
         if connection:
             connection.close()
 
+# User Login Endpoint:
+# Logs existing users in
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json() or {}      
@@ -132,18 +127,18 @@ def login():
     if not username or not password:
         return jsonify({'error': 'username and password required'}), 400
 
-    # 1. Search user in Database
+    # Look up user in database
     user = get_user_by_username(username)
     if not user:
         return jsonify({'error': 'invalid credentials'}), 401
 
     stored_hash = user['password_hash'] # string stored in database
 
-    # 2. Compare provided password to stored bcyrpt hash
+    # Compare provided password to stored bcyrpt hashed password
     if not bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8')):
         return jsonify({'error': 'invalid credentials'}), 401
     
-    # 3. Store login info in session so user is remembered
+    # Store user info in the session so they stay logged in
     session['user_id'] = user['user_id']
     session['username'] = user['username']
     session['role'] = user['role']
@@ -158,6 +153,8 @@ def login():
         }
     }), 200
 
+# User Logout Endpoint:
+# Logs out user
 @app.route('/logout', methods=['POST'])
 def logout():
     session.clear()
