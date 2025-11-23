@@ -1,14 +1,16 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, session
 import mysql.connector
 from mysql.connector import Error
 from dotenv import load_dotenv
 import os
 from flask_cors import CORS
+import bcrypt
 
 load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
+app.secret_key = "super_secret_key" 
 
 # Database configuration
 db_config = {
@@ -33,6 +35,123 @@ def get_db_connection():
     except Error as e:
         print(f"Error connecting to MySQL: {e}")
         return None
+
+def get_user_by_username():
+    """
+    Looks up a user by username in the UserAccount Table
+    Returns user's information or None if not found.
+    Simply reads from Database
+    """
+    connection = get_db_connection()
+    if connection is None:
+        return None
+    
+    cursor = None
+    try: 
+        cursor = connection.cursor(dicitonary=True)
+        query = "SELECT user_id, username, password_hash, role FROM UserAccount WHERE username = %s"
+        cursor.execute(query, (username,))
+        user = cursor.fetchone()
+        return user
+    finally:
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
+
+@app.route('/regisiter', methods['POST'])
+def register():
+    """
+    Register a new user.
+    Expects JSON: { "username": "...", "password": "..." }
+    """
+    data = requeset.get_json() or {}
+    username = data.get('username')
+    password = data.get('password')
+
+    # 1. Validation
+    if not username or not password:
+        return jsonify({'error': 'username and password required'}), 400
+    
+    # 2. Check if username already exists
+    if get_user_by_username(username):
+        return jsonify({'error': 'username already exists'}), 400
+
+    # 3. Hash password with bcyrpt
+    # - encode(): str -> bytes
+    # - decode(): bytes -> str (for storing in VARCHAR)
+    password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+    # 4. Insert into UserAccount Table
+    connection = get_db_connection()
+    if connection is None:
+        return jsonify({'error': 'Database connection failed'}), 500
+    
+    cursor = None
+    try:
+        cursor = connection.cursor()
+        query = curosr.execute(query, (username, password_hash, 'user')) # default to 'user' role
+        connection.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'user registered',
+            'user_id': cursor.lastrowid,
+            'username': username,
+            'role': 'user'
+        }), 201
+    
+    except Error as e:
+        if connection:
+            connection.rollback()
+        return jsonify({'error':str(e)}), 500
+    
+    finally:
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json() or {}      
+    username = data.get('username')
+    password = data.get('password')
+
+    if not username or not password:
+        return jsonify({'error': 'username and password required'}), 400
+
+    # 1. Search user in Database
+    user = get_user_by_username(username)
+    if not user:
+        return jsonify({'error': 'invalid credentials'}), 401
+
+    stored_hash = user['password_hash'] # string stored in database
+
+    # 2. Compare provided password to stored bcyrpt hash
+    if not bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8')):
+        return jsonify({'error': 'invalid credentials'}), 401
+    
+    # 3. Store login info in session so user is remembered
+    session['user_id'] = user['user_id']
+    session['username'] = user['username']
+    session['role'] = user['role']
+
+    return jsonify({
+        'success': True,
+        'message': 'login successful',
+        'user': {
+            'user_id': user['user_id'],
+            'username': user['username'],
+            'role': user['role']
+        }
+    }), 200
+
+@app.route('/logout', methods=['POST'])
+def logout():
+    session.clear()
+    return jsonify({'success': True, 'message': 'logged out'}), 200
+
 
 @app.route('/getTable', methods=['POST']) 
 def get_table():
