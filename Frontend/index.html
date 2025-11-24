@@ -28,6 +28,12 @@
         white-space: normal;
         overflow-wrap: anywhere;
       }
+      .item ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        text-align: center;
+      }
     </style>
   </head>
   <body>
@@ -38,15 +44,26 @@
     </select>
     <h2 id="game_header"></h2>
       <div class="container">
-        <div class="item">Teams</div>
-        <div class="item">Players</div>
-        <div class="item">Tournaments</div>
-        <div class="item">Organizers</div>
+        <div class="item">
+          <strong>Teams</strong>
+          <ul id="teams-list"></ul>
+        </div>
+        <div class="item">
+          <strong>Players</strong>
+          <ul id="players-list"></ul>
+        </div>
+        <div class="item">
+          <strong>Tournaments</strong>
+          <ul id="tournaments-list"></ul>
+        </div>
+        <div class="item">
+          <strong>Organizers</strong>
+          <ul id="organizers-list"></ul>
+        </div>
       </div>
     <!--
       TODO:
-      1. ADD PULLING AND DISPLAYING DATA FOR EACH COLUMN IN THE DIV CONTAINER
-      2. ADD HIDDEN BUTTONS ON EACH DATA ITEM TO COLLAPSE OTHER ITEMS AND 
+      1. ADD HIDDEN BUTTONS ON EACH DATA ITEM TO COLLAPSE OTHER ITEMS AND 
       DISPLAY ALL TABLES RELATED TO CLICKED ITEMS
     -->
     <script>
@@ -84,24 +101,74 @@
         }
 
       } catch (err) {
-        testDiv.textContent = `Request failed: ${err.message}`;
+        console.error(err);
       }
     })();
     </script>
 
     <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        const gameSelector = document.getElementById('game_select');
-        const gameHeader = document.getElementById('game_header');
+      // utility to render <li> items from an array and a display function
+      function renderList(listEl, rows, displayFn) {
+        listEl.innerHTML = ""; // clear previous
+        if (!rows || rows.length === 0) {
+          listEl.innerHTML = "<li style='opacity:.7'>None</li>";
+          return;
+        }
+        const frag = document.createDocumentFragment();
+        for (const r of rows) {
+          const li = document.createElement("li");
+          li.textContent = displayFn(r);
+          frag.appendChild(li);
+        }
+        listEl.appendChild(frag);
+      }
 
-        function updateHeader() {
-          const sel = gameSelector.selectedOptions[0];
-          gameHeader.textContent = sel && sel.value ? sel.text : 'select a game...';
+      async function loadGameRelated(gameId, gameName) {
+        // set the header
+        document.getElementById("game_header").textContent = gameName || "Select a game…";
+
+        const teamsEl = document.getElementById("teams-list");
+        const playersEl = document.getElementById("players-list");
+        const tournEl = document.getElementById("tournaments-list");
+        const orgEl = document.getElementById("organizers-list");
+
+        // show loading indicators
+        for (const el of [teamsEl, playersEl, tournEl, orgEl]) {
+          el.innerHTML = "<li>Loading…</li>";
         }
 
-        gameSelector.addEventListener('change', updateHeader);
+        try {
+          const resp = await fetch("http://127.0.0.1:5000/byGame", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ game_id: gameId }),
+          });
+          if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
+          const data = await resp.json();
 
-        updateHeader();
+          // render lists
+          renderList(teamsEl, data.teams, t => t.team_name ?? t.team_id);
+          renderList(playersEl, data.players, p => p.player_username ?? p.player_id);
+          renderList(tournEl, data.tournaments, t => t.tournament_name ?? t.tournament_id);
+          renderList(orgEl, data.organizers, o => o.organizer_organization ?? o.organizer_id);
+
+        } catch (e) {
+          for (const el of [teamsEl, playersEl, tournEl, orgEl]) {
+            el.innerHTML = `<li style="color:crimson">Error: ${e.message}</li>`;
+          }
+          console.error(e);
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        const gameSelector = document.getElementById("game_select");
+
+        // when user picks a game, fetch related items and render
+        gameSelector.addEventListener("change", function () {
+          const sel = gameSelector.selectedOptions[0];
+          if (!sel || !sel.value) return;
+          loadGameRelated(sel.value, sel.text);
+        });
       });
     </script>
   </body>
