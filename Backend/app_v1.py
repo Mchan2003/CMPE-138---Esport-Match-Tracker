@@ -20,12 +20,12 @@ db_config = {
     'database': 'MatchTracker'
 }
 
-VALID_TABLE = ['game', 'tornament', 'matchInfo', 'team', 'player',
-               'place', 'venue', 'prizepool', 'sponser', 'commentator',
+VALID_TABLE = ['game', 'tournament', 'matchInfo', 'team', 'player',
+               'place', 'venue', 'prizepool', 'sponsor', 'commentator',
                'organizer', 'manager', 'coach']
 
-VALID_PRIMARY_KEY = ['game_id', 'tornament_id', 'matchInfo_id', 'team_id', 'player_id',
-                     'place_id', 'venue_id', 'prizepool_id', 'sponser_id', 'commentator_id',
+VALID_PRIMARY_KEY = ['game_id', 'tournament_id', 'matchInfo_id', 'team_id', 'player_id',
+                     'place_id', 'venue_id', 'prizepool_id', 'sponsor_id', 'commentator_id',
                      'organizer_id', 'manager_id', 'coach_id']
 
 def get_db_connection():
@@ -78,9 +78,9 @@ def register():
 
     # Hash password using bcrypt
     password_hash = bcrypt.hashpw(
-        password.encode('utf-8'), 
+        password.encode(), 
         bcrypt.gensalt()
-    ).decode('utf-8')
+    ).decode()
 
     # Connect to database
     connection = get_db_connection()
@@ -135,7 +135,7 @@ def login():
     stored_hash = user['password_hash'] # string stored in database
 
     # Compare provided password to stored bcyrpt hashed password
-    if not bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8')):
+    if not bcrypt.checkpw(password.encode(), stored_hash.encode()):
         return jsonify({'error': 'invalid credentials'}), 401
     
     # Store user info in the session so they stay logged in
