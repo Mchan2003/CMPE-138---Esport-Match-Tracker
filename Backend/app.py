@@ -222,6 +222,11 @@ def get_entry():
 
 @app.route('/deleteEntry', methods=['DELETE']) 
 def delete_entry():
+
+    # Admin Permission Check
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'admin access required'}), 403
+
     connection = get_db_connection()
     if connection is None:
         return jsonify({'error': 'Database connection failed'}), 500
@@ -322,7 +327,8 @@ def by_game():
         try:
             connection.close()
         except: pass
-#todo: add insert element, and user login
+
+# todo: add an admin only check 
 
 if __name__ == '__main__':
     app.run(debug=True)
