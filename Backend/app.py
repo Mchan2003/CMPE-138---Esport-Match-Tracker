@@ -1,3 +1,4 @@
+# SJSU CMPE 138 FALL 2025 TEAM7
 from flask import Flask, jsonify, request, session
 from datetime import datetime
 import mysql.connector
