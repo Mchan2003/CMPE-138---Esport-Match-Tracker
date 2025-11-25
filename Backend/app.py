@@ -18,7 +18,7 @@ db_config = {
     'host': 'localhost',
     'user': 'root',
     'password': os.getenv('DB_PASSWORD'), #make a .env file and store your mysql connection password
-    'database': 'MatchTracker_test'
+    'database': 'matchtracker'
 }
 
 VALID_TABLE = {
@@ -394,12 +394,9 @@ def upcoming_tournaments():
             return jsonify({'error': 'Invalid input. Check json key format'}), 400
 
         cursor = connection.cursor(dictionary=True)
-        query = """SELECT T.tournament_id, T.tournament_name, T.tournament_schedule, 
-                           T.tournament_format, G.game_name 
-                    FROM Tournament T
-                    INNER JOIN Game G ON T.game_id = G.game_id
-                    WHERE tournament_schedule >= %s 
-                    ORDER BY tournament_schedule;""" 
+        query = """SELECT * 
+                    FROM UpcomingTournament 
+                    WHERE tournament_schedule >= %s """ 
         cursor.execute(query, (current_time,))
         entries = cursor.fetchall()
         cursor.close()
@@ -430,10 +427,9 @@ def get_format():
             return jsonify({'error': 'Invalid input. Check json key format: format)'}), 400
 
         cursor = connection.cursor(dictionary=True)
-        query = """SELECT tournament_id, tournament_name, tournament_format
-                   FROM Tournament
-                   WHERE tournament_format = %s
-                   ORDER BY tournament_schedule;""" 
+        query = """SELECT *
+                   FROM Format
+                   WHERE tournament_format = %s;""" 
         cursor.execute(query, (format,))
         entries = cursor.fetchall()
         cursor.close()
@@ -464,15 +460,9 @@ def get_placement_points():
             return jsonify({'error': 'Invalid input. Check json key format: format)'}), 400
 
         cursor = connection.cursor(dictionary=True)
-        query = """
-            SELECT P.placement_id, P.placement_rank, P.placement_points, P.placement_prize_amount,
-                          TM.team_name   
-                   FROM Placement P
-                   INNER JOIN Team TM On P.team_id = TM.team_id
-                   INNER JOIN Tournament T On P.tournament_id = T.tournament_id
-                   WHERE T.tournament_name = %s;
-                   ORDER BY P.placement_points DESC;
-        """ 
+        query = """SELECT *  
+                   FROM PLacementPoints
+                   WHERE tournament_name = %s;""" 
         cursor.execute(query, (tournament_name,))
         entries = cursor.fetchall()
         cursor.close()
@@ -503,14 +493,9 @@ def get_matches_in_tournament():
             return jsonify({'error': 'Invalid input. Check json key format: format)'}), 400
 
         cursor = connection.cursor(dictionary=True)
-        query = """SELECT M.match_id, M.match_rounds, M.match_date_time, M.match_results,
-                          T1.team_name AS team1_name, T2.team_name AS team2_name
-                   FROM MatchInfo M
-                   INNER JOIN Tournament T ON M.tournament_id = T.tournament_id
-                   INNER JOIN Team T1 On M.team1_id = T1.team_id
-                   INNER JOIN Team T2 On M.team2_id = T2.team_id
-                   WHERE T.tournament_name = %s
-                   ORDER BY M.match_date_time;""" 
+        query = """SELECT *
+                   FROM TournamentMatches
+                   WHERE tournament_name = %s;""" 
         cursor.execute(query, (tournament_name,))
         entries = cursor.fetchall()
         cursor.close()
@@ -541,12 +526,9 @@ def get_teams_in_match():
             return jsonify({'error': 'Invalid input. Check json key format: format)'}), 400
 
         cursor = connection.cursor(dictionary=True)
-        query = """SELECT TM.team_name
-                   FROM Team TM
-                   INNER JOIN TournamentTeam TT ON TM.team_id = TT.team_id
-                   INNER JOIN Tournament T ON TT.tournament_id = T.tournament_id
-                   WHERE T.tournament_name = %s
-                   ORDER BY TM.team_name;""" 
+        query = """SELECT team_name
+                   FROM MatchTeams
+                   WHERE tournament_name = %s;""" 
         cursor.execute(query, (tournament_name,))
         entries = cursor.fetchall()
         cursor.close()
@@ -577,10 +559,9 @@ def get_team_wins():
             return jsonify({'error': 'Invalid input. Check json key format: format)'}), 400
 
         cursor = connection.cursor(dictionary=True)
-        query = """SELECT T.team_name, COUNT(*) AS wins
-                   FROM Team T
-                   INNER JOIN MatchInfo M ON T.team_id = M.match_winner_id
-                   WHERE T.team_name = %s""" 
+        query = """SELECT *
+                   FROM TeamWins
+                   WHERE team_name = %s;""" 
         cursor.execute(query, (team_name,))
         entries = cursor.fetchall()
         cursor.close()
