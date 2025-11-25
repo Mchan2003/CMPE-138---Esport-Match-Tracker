@@ -145,15 +145,18 @@ CREATE TABLE MatchInfo(
     match_date_time DATETIME,
     match_results   TEXT,
 
-    tournament_id VARCHAR(6),
-    game_id       VARCHAR(6),
-    team1_id      VARCHAR(6),
-    team2_id      VARCHAR(6),
+    tournament_id    VARCHAR(6),
+    game_id          VARCHAR(6),
+    team1_id         VARCHAR(6),
+    team2_id         VARCHAR(6),
+    match_winner_id  VARCHAR(6),
 
-    FOREIGN KEY (tournament_id) REFERENCES Tournament(tournament_id),
-    FOREIGN KEY (game_id)       REFERENCES Game(game_id),
-    FOREIGN KEY (team1_id)      REFERENCES Team(team_id),
-    FOREIGN KEY (team2_id)      REFERENCES Team(team_id)
+    FOREIGN KEY (tournament_id)   REFERENCES Tournament(tournament_id),
+    FOREIGN KEY (game_id)         REFERENCES Game(game_id),
+    FOREIGN KEY (team1_id)        REFERENCES Team(team_id),
+    FOREIGN KEY (team2_id)        REFERENCES Team(team_id)
+    FOREIGN KEY (match_winner_id) REFERENCES Team(team_id)
+
 );
 
 CREATE TABLE MatchCommentator(
