@@ -1,15 +1,17 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, session
 from datetime import datetime
 import mysql.connector
 from mysql.connector import Error
 from dotenv import load_dotenv
 import os
 from flask_cors import CORS
+import bcrypt                       # Library for hashing passwords
 
 load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
+app.secret_key = 'super_secret_key' # required for session cookies
 
 # Database configuration
 db_config = {
@@ -43,6 +45,132 @@ def get_db_connection():
         print(f"Error connecting to MySQL: {e}")
         return None
 
+# ================== USER AUTHENTICATION ==================
+# Get user record from database using username
+def get_user_by_username(username: str):
+        
+    connection = get_db_connection()
+    if connection is None:
+        return None
+    
+    cursor = None
+    try: 
+        cursor = connection.cursor(dictionary=True)
+        query = """
+            SELECT user_id, username, password_hash, role 
+            FROM UserAccount 
+            WHERE username = %s
+        """
+        cursor.execute(query, (username,))
+        user = cursor.fetchone()
+        return user
+    finally:
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
+
+# User Registration Endpoint
+# Registers a new user account (creates username, hashed password, and default role)
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.get_json(force=True) or {}
+    username = data.get('username')
+    password = data.get('password')
+
+    # Check if both username and password are included
+    if not username or not password:
+        return jsonify({'error': 'username and password required'}), 400
+    
+    # Check if username is already taken
+    if get_user_by_username(username):
+        return jsonify({'error': 'username already exists'}), 400
+
+    # Hash password using bcrypt
+    password_hash = bcrypt.hashpw(
+        password.encode(), 
+        bcrypt.gensalt()
+    ).decode()
+
+    # Connect to database
+    connection = get_db_connection()
+    if connection is None:
+        return jsonify({'error': 'Database connection failed'}), 500
+    
+    cursor = None
+    try:
+        cursor = connection.cursor()
+        query = """
+            INSERT INTO UserAccount(username, password_hash, role)
+            VALUES (%s, %s, %s)
+        """
+        cursor.execute(query, (username, password_hash, 'user')) # default to 'user' role
+        connection.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'user registered',
+            'user_id': cursor.lastrowid,
+            'username': username,
+            'role': 'user'
+        }), 201
+    
+    except Error as e:
+        if connection:
+            connection.rollback()
+        return jsonify({'error':str(e)}), 500
+    
+    finally:
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
+
+# User Login Endpoint:
+# Logs existing users in
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json() or {}      
+    username = data.get('username')
+    password = data.get('password')
+
+    if not username or not password:
+        return jsonify({'error': 'username and password required'}), 400
+
+    # Look up user in database
+    user = get_user_by_username(username)
+    if not user:
+        return jsonify({'error': 'invalid credentials'}), 401
+
+    stored_hash = user['password_hash'] # string stored in database
+
+    # Compare provided password to stored bcyrpt hashed password
+    if not bcrypt.checkpw(password.encode(), stored_hash.encode()):
+        return jsonify({'error': 'invalid credentials'}), 401
+    
+    # Store user info in the session so they stay logged in
+    session['user_id'] = user['user_id']
+    session['username'] = user['username']
+    session['role'] = user['role']
+
+    return jsonify({
+        'success': True,
+        'message': 'login successful',
+        'user': {
+            'user_id': user['user_id'],
+            'username': user['username'],
+            'role': user['role']
+        }
+    }), 200
+
+# User Logout Endpoint:
+# Logs out user
+@app.route('/logout', methods=['POST'])
+def logout():
+    session.clear()
+    return jsonify({'success': True, 'message': 'logged out'}), 200
+# =========================================================
+
 @app.route('/getTable', methods=['POST']) 
 def get_table():
     connection = get_db_connection()
@@ -57,8 +185,8 @@ def get_table():
         if table_name is None:
             return jsonify({'error': 'Invalid input. Check json key format'}), 400
 
-        table_name = table_name.lower();
-        if table_name not in VALID_TABLE.keys():
+        table_name = table_name.lower()
+        if table_name not in VALID_TABLE:
             return jsonify({'error': 'Invalid table name'}), 400   
 
         cursor = connection.cursor(dictionary=True)
@@ -71,7 +199,7 @@ def get_table():
     except Exception as e:  
         if connection:
             connection.rollback()  
-        return jsonify({'error: str(e)'}), 500
+        return jsonify({'error': str(e)}), 500
     finally:
         if cursor:
             cursor.close()
@@ -116,6 +244,11 @@ def get_entry():
 
 @app.route('/deleteEntry', methods=['DELETE']) 
 def delete_entry():
+
+    # Admin Permission Check
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'admin access required'}), 403
+    
     connection = get_db_connection()
     if connection is None:
         return jsonify({'error': 'Database connection failed'}), 500
@@ -153,6 +286,11 @@ def delete_entry():
 
 @app.route('/insertEntry', methods=['POST']) 
 def insert_entry():
+
+    # Admin Permission Check
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'admin access required'}), 403
+    
     connection = get_db_connection()
     if connection is None:
         return jsonify({'error': 'Database connection failed'}), 500
@@ -192,6 +330,11 @@ def insert_entry():
 
 @app.route('/updateEntry', methods=['PUT']) 
 def update_entry():
+
+    # Admin Permission Check
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'admin access required'}), 403
+    
     connection = get_db_connection()
     if connection is None:
         return jsonify({'error': 'Database connection failed'}), 500
@@ -234,8 +377,8 @@ def update_entry():
         if connection:
             connection.close()
 
-@app.route('/upcomingTornaments', methods=['POST']) 
-def upcoming_tornaments():
+@app.route('/upcomingTournaments', methods=['POST']) 
+def upcoming_tournaments():
     connection = get_db_connection()
     if connection is None:
         return jsonify({'error': 'Database connection failed'}), 500
@@ -261,7 +404,7 @@ def upcoming_tornaments():
     except Exception as e:  
         if connection:
             connection.rollback()  
-        return jsonify({'error: str(e)'}), 500
+        return jsonify({'error': str(e)}), 500
     finally:
         if cursor:
             cursor.close()
@@ -294,7 +437,7 @@ def get_format():
     except Exception as e:  
         if connection:
             connection.rollback()  
-        return jsonify({'error: str(e)'}), 500
+        return jsonify({'error': str(e)}), 500
     finally:
         if cursor:
             cursor.close()
@@ -327,7 +470,7 @@ def get_placement_points():
     except Exception as e:  
         if connection:
             connection.rollback()  
-        return jsonify({'error: str(e)'}), 500
+        return jsonify({'error': str(e)}), 500
     finally:
         if cursor:
             cursor.close()
@@ -360,7 +503,7 @@ def get_matches_in_tournament():
     except Exception as e:  
         if connection:
             connection.rollback()  
-        return jsonify({'error: str(e)'}), 500
+        return jsonify({'error': str(e)}), 500
     finally:
         if cursor:
             cursor.close()
@@ -393,7 +536,7 @@ def get_teams_in_match():
     except Exception as e:  
         if connection:
             connection.rollback()  
-        return jsonify({'error: str(e)'}), 500
+        return jsonify({'error': str(e)}), 500
     finally:
         if cursor:
             cursor.close()
@@ -426,7 +569,7 @@ def get_team_wins():
     except Exception as e:  
         if connection:
             connection.rollback()  
-        return jsonify({'error: str(e)'}), 500
+        return jsonify({'error': str(e)}), 500
     finally:
         if cursor:
             cursor.close()
