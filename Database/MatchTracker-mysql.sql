@@ -86,7 +86,13 @@ CREATE TABLE Placement(
     placement_id           VARCHAR(6) PRIMARY KEY,
     placement_rank         TEXT,
     placement_points       VARCHAR(3),
-    placement_prize_amount DECIMAL(8,2)
+    placement_prize_amount DECIMAL(8,2),
+
+    team_id VARCHAR(6),
+    tournament_id VARCHAR(6),
+
+    FOREIGN KEY (team_id) REFERENCES Team(team_id),
+    FOREIGN KEY (tournament_id) REFERENCES Tournament(tournament_id)
 );
 
 CREATE TABLE Tournament(
