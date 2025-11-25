@@ -1,17 +1,17 @@
-# SJSU CMPE 138 FALL 2025 TEAM7
-from flask import Flask, jsonify, request, session
+from flask import Flask, jsonify, request, session, send_from_directory
 from datetime import datetime
 import mysql.connector
 from mysql.connector import Error
 from dotenv import load_dotenv
 import os
-from flask_cors import CORS
 import bcrypt                       # Library for hashing passwords
 
 load_dotenv()
 
-app = Flask(__name__)
-CORS(app)
+app = Flask(__name__, static_folder="static")
+@app.route("/")
+def index():
+    return send_from_directory("static", "index.html")
 app.secret_key = 'super_secret_key' # required for session cookies
 
 # Database configuration
@@ -171,6 +171,20 @@ def login():
 def logout():
     session.clear()
     return jsonify({'success': True, 'message': 'logged out'}), 200
+
+@app.get("/me")
+def me():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"authenticated": False})
+    return jsonify({
+        "authenticated": True,
+        "user": {
+            "user_id": session['user_id'],
+            "username": session['username'],
+            "role": session['role'],
+        }
+    })
 # =========================================================
 
 @app.route('/getTable', methods=['POST']) 
@@ -577,6 +591,77 @@ def get_team_wins():
             cursor.close()
         if connection:
             connection.close()
+
+@app.post("/byGame")
+def by_game():
+    connection = get_db_connection()
+    if connection is None:
+        return jsonify({'error': 'Database connection failed'}), 500
+
+    try:
+        data = request.get_json(force=True) or {}
+        game_id = data.get("game_id")
+        if not game_id:
+            return jsonify({'error': 'Missing game_id'}), 400
+
+        cur = connection.cursor(dictionary=True)
+
+        # Tournaments for the game
+        cur.execute("""
+            SELECT t.*
+            FROM Tournament t
+            WHERE t.game_id = %s
+        """, (game_id,))
+        tournaments = cur.fetchall()
+
+        # Teams for the game (via tournaments)
+        cur.execute("""
+            SELECT DISTINCT tm.*
+            FROM Team tm
+            JOIN TournamentTeam tt ON tt.team_id = tm.team_id
+            JOIN Tournament t      ON t.tournament_id = tt.tournament_id
+            WHERE t.game_id = %s
+        """, (game_id,))
+        teams = cur.fetchall()
+
+        # Players for the game (direct junction)
+        cur.execute("""
+            SELECT p.*
+            FROM Player p
+            JOIN PlayerGame pg ON pg.player_id = p.player_id
+            WHERE pg.game_id = %s
+        """, (game_id,))
+        players = cur.fetchall()
+
+        # Organizers for the game (via tournaments)
+        cur.execute("""
+            SELECT DISTINCT o.*
+            FROM Organizer o
+            JOIN Tournament t ON t.organizer_id = o.organizer_id
+            WHERE t.game_id = %s
+        """, (game_id,))
+        organizers = cur.fetchall()
+
+        cur.close()
+        connection.close()
+        return jsonify({
+            "tournaments": tournaments,
+            "teams": teams,
+            "players": players,
+            "organizers": organizers
+        })
+
+    except Exception as e:
+        if connection:
+            connection.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        try:
+            cur.close()
+        except: pass
+        try:
+            connection.close()
+        except: pass
 
 if __name__ == '__main__':
     app.run(debug=True)
