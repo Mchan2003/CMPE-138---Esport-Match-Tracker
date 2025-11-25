@@ -82,19 +82,6 @@ CREATE TABLE Team(
     FOREIGN KEY (coach_id)   REFERENCES Coach(coach_id)
 );
 
-CREATE TABLE Placement(
-    placement_id           VARCHAR(6) PRIMARY KEY,
-    placement_rank         TEXT,
-    placement_points       VARCHAR(3),
-    placement_prize_amount DECIMAL(8,2),
-
-    team_id VARCHAR(6),
-    tournament_id VARCHAR(6),
-
-    FOREIGN KEY (team_id) REFERENCES Team(team_id),
-    FOREIGN KEY (tournament_id) REFERENCES Tournament(tournament_id)
-);
-
 CREATE TABLE Tournament(
     tournament_id VARCHAR(6) PRIMARY KEY,
     tournament_name VARCHAR(50),
@@ -112,6 +99,19 @@ CREATE TABLE Tournament(
     FOREIGN KEY (venue_id)      REFERENCES Venue(venue_id),
     FOREIGN KEY (prize_pool_id) REFERENCES PrizePool(prize_pool_id),
     FOREIGN KEY (organizer_id)  REFERENCES Organizer(organizer_id)
+);
+
+CREATE TABLE Placement(
+    placement_id           VARCHAR(6) PRIMARY KEY,
+    placement_rank         TEXT,
+    placement_points       VARCHAR(3),
+    placement_prize_amount DECIMAL(8,2),
+
+    team_id VARCHAR(6),
+    tournament_id VARCHAR(6),
+
+    FOREIGN KEY (team_id) REFERENCES Team(team_id),
+    FOREIGN KEY (tournament_id) REFERENCES Tournament(tournament_id)
 );
 
 CREATE TABLE Player(
