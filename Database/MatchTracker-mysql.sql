@@ -1,8 +1,8 @@
 -- Match Maker Database -- 
 -- DROP & CREATE TABLE --
-DROP DATABASE IF EXISTS MatchTracker;
-CREATE DATABASE MatchTracker;
-USE MatchTracker;
+DROP DATABASE IF EXISTS MatchTracker_test;
+CREATE DATABASE MatchTracker_test;
+USE MatchTracker_test;
 
 -- TABLES --
 CREATE TABLE UserAccount (
@@ -12,8 +12,13 @@ CREATE TABLE UserAccount (
     role           ENUM('admin', 'user') DEFAULT 'user'
 );
 
+-- For Demo: Admin Password = Admin123 ---
 INSERT INTO UserAccount (username, password_hash, role)
-VALUES ('admin', 'XXXXXXXXXX', 'admin');
+VALUES (
+	'admin', 
+    '$2b$12$YfT5gtnm6tC9RMmgAWeHrucD/w//0g4lL95lWEtAFvXMFnSHjMlEu', 
+    'admin'
+);
 
 CREATE TABLE Game(
     game_id VARCHAR(6) PRIMARY KEY, 
@@ -306,135 +311,3 @@ INSERT INTO Coach (coach_id, coach_name, coach_specialty) VALUES
 ('CO003', 'Andreas Hoejsleth', 'Hero Selection and Game Theory'),
 ('CO004', 'Chet Singh', 'Agent Composition and Utility Usage'),
 ('CO005', 'Fabian Broich', 'Team Synergy and Communication');
-
--- =========================
--- 1) Link tournaments to game, venue, prize pool, organizer
--- =========================
-UPDATE Tournament
-SET game_id = 'G001', venue_id = 'V004', prize_pool_id = 'PP001', organizer_id = 'O001'
-WHERE tournament_id = 'T001';  -- Worlds Championship 2024 -> LoL
-
-UPDATE Tournament
-SET game_id = 'G002', venue_id = 'V002', prize_pool_id = 'PP002', organizer_id = 'O002'
-WHERE tournament_id = 'T002';  -- CS2 Major Berlin -> CS2
-
-UPDATE Tournament
-SET game_id = 'G003', venue_id = 'V003', prize_pool_id = 'PP003', organizer_id = 'O003'
-WHERE tournament_id = 'T003';  -- The International 2024 -> Dota 2
-
-UPDATE Tournament
-SET game_id = 'G004', venue_id = 'V005', prize_pool_id = 'PP004', organizer_id = 'O004'
-WHERE tournament_id = 'T004';  -- Valorant Champions -> Valorant
-
-UPDATE Tournament
-SET game_id = 'G005', venue_id = 'V001', prize_pool_id = 'PP005', organizer_id = 'O005'
-WHERE tournament_id = 'T005';  -- OW League Finals -> Overwatch 2
-
-
--- =========================
--- 2) (Optional) link teams to managers/coaches (FKs on Team)
--- =========================
-UPDATE Team SET manager_id = 'MG001', coach_id = 'CO004' WHERE team_id = 'TM001'; -- Cloud9
-UPDATE Team SET manager_id = 'MG005', coach_id = 'CO001' WHERE team_id = 'TM002'; -- T1
-UPDATE Team SET manager_id = 'MG004', coach_id = 'CO002' WHERE team_id = 'TM003'; -- FaZe
-UPDATE Team SET manager_id = 'MG002', coach_id = 'CO003' WHERE team_id = 'TM004'; -- Team Liquid
-UPDATE Team SET manager_id = 'MG003', coach_id = 'CO005' WHERE team_id = 'TM005'; -- Fnatic
-UPDATE Team SET manager_id = 'MG001', coach_id = 'CO001' WHERE team_id = 'TM006'; -- Gen.G
-
-
--- =========================
--- 3) Player ↔ Game (junction) so you can fetch players by game
--- =========================
-INSERT INTO PlayerGame (player_id, game_id) VALUES
-('P001','G001'),  -- Faker -> LoL
-('P005','G001'),  -- Deft -> LoL
-('P002','G002'),  -- s1mple -> CS2
-('P006','G002'),  -- ZywOo -> CS2
-('P003','G003'),  -- N0tail -> Dota 2
-('P007','G003'),  -- Ceb -> Dota 2
-('P004','G004'),  -- TenZ -> Valorant
-('P008','G004');  -- Chronicle -> Valorant
-
-
--- =========================
--- 4) Team ↔ Player (rosters) for sample data
--- =========================
-INSERT INTO TeamPlayer (team_id, player_id) VALUES
-('TM002','P001'),  -- T1: Faker
-('TM002','P005'),  -- T1: Deft
-('TM001','P004'),  -- Cloud9: TenZ
-('TM003','P006'),  -- FaZe: ZywOo
-('TM004','P003'),  -- Team Liquid: N0tail
-('TM005','P008');  -- Fnatic: Chronicle
-
-
--- =========================
--- 5) Tournament ↔ Team (entrants) + sample placements
--- =========================
-INSERT INTO TournamentTeam (tournament_id, team_id, placement_id) VALUES
-('T001','TM002','PL001'), -- Worlds: T1 1st
-('T001','TM006','PL002'), -- Worlds: Gen.G 2nd
-('T001','TM001','PL005'), -- Worlds: Cloud9 5-6th
-('T001','TM005','PL006'), -- Worlds: Fnatic 7-8th
-
-('T002','TM003','PL001'), -- CS2 Major: FaZe 1st
-('T002','TM005','PL002'), -- CS2 Major: Fnatic 2nd
-
-('T003','TM004','PL001'), -- TI: Team Liquid 1st
-('T003','TM005','PL003'), -- TI: Fnatic 3rd
-
-('T004','TM001','PL002'), -- VCT Champs: Cloud9 2nd
-('T004','TM005','PL004'); -- VCT Champs: Fnatic 4th
-
-
--- =========================
--- 6) Tournament ↔ Sponsor / Commentator (samples)
--- =========================
-INSERT INTO TournamentSponsor (tournament_id, sponsor_id) VALUES
-('T001','S001'), ('T001','S003'),
-('T002','S002'), ('T002','S003'),
-('T003','S003'), ('T003','S004'),
-('T004','S004'), ('T004','S005'),
-('T005','S001'), ('T005','S005');
-
-INSERT INTO TournamentCommentator (tournament_id, commentator_id) VALUES
-('T001','C001'), ('T001','C004'),
-('T002','C002'),
-('T003','C005'),
-('T004','C004'),
-('T005','C001');
-
-
--- =========================
--- 7) Update Matches to hook up game, tournament, teams
--- =========================
-UPDATE MatchInfo
-SET tournament_id = 'T001', game_id = 'G001', team1_id = 'TM002', team2_id = 'TM006'
-WHERE match_id = 'M001';
-
-UPDATE MatchInfo
-SET tournament_id = 'T001', game_id = 'G001', team1_id = 'TM001', team2_id = 'TM005'
-WHERE match_id = 'M002';
-
-UPDATE MatchInfo
-SET tournament_id = 'T002', game_id = 'G002', team1_id = 'TM003', team2_id = 'TM005'
-WHERE match_id = 'M003';
-
-UPDATE MatchInfo
-SET tournament_id = 'T003', game_id = 'G003', team1_id = 'TM004', team2_id = 'TM005'
-WHERE match_id = 'M004';
-
-UPDATE MatchInfo
-SET tournament_id = 'T004', game_id = 'G004', team1_id = 'TM001', team2_id = 'TM005'
-WHERE match_id = 'M005';
-
-
--- =========================
--- 8) Match ↔ Commentator (samples)
--- =========================
-INSERT INTO MatchCommentator (match_id, commentator_id) VALUES
-('M001','C001'), ('M001','C004'),
-('M002','C001'),
-('M003','C002'),
-('M004','C005'),
-('M005','C004');
