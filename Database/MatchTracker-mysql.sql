@@ -1,8 +1,8 @@
 -- Match Maker Database -- 
 -- DROP & CREATE TABLE --
-DROP DATABASE IF EXISTS MatchTracker_test;
-CREATE DATABASE MatchTracker_test;
-USE MatchTracker_test;
+DROP DATABASE IF EXISTS MatchTracker;
+CREATE DATABASE MatchTracker;
+USE MatchTracker;
 
 -- TABLES --
 CREATE TABLE UserAccount (
@@ -87,13 +87,6 @@ CREATE TABLE Team(
     FOREIGN KEY (coach_id)   REFERENCES Coach(coach_id)
 );
 
-CREATE TABLE Placement(
-    placement_id           VARCHAR(6) PRIMARY KEY,
-    placement_rank         TEXT,
-    placement_points       VARCHAR(3),
-    placement_prize_amount DECIMAL(8,2)
-);
-
 CREATE TABLE Tournament(
     tournament_id VARCHAR(6) PRIMARY KEY,
     tournament_name VARCHAR(50),
@@ -111,6 +104,19 @@ CREATE TABLE Tournament(
     FOREIGN KEY (venue_id)      REFERENCES Venue(venue_id),
     FOREIGN KEY (prize_pool_id) REFERENCES PrizePool(prize_pool_id),
     FOREIGN KEY (organizer_id)  REFERENCES Organizer(organizer_id)
+);
+
+CREATE TABLE Placement(
+    placement_id           VARCHAR(6) PRIMARY KEY,
+    placement_rank         TEXT,
+    placement_points       VARCHAR(3),
+    placement_prize_amount DECIMAL(8,2),
+
+    team_id VARCHAR(6),
+    tournament_id VARCHAR(6),
+
+    FOREIGN KEY (team_id) REFERENCES Team(team_id),
+    FOREIGN KEY (tournament_id) REFERENCES Tournament(tournament_id)
 );
 
 CREATE TABLE Player(
@@ -150,15 +156,18 @@ CREATE TABLE MatchInfo(
     match_date_time DATETIME,
     match_results   TEXT,
 
-    tournament_id VARCHAR(6),
-    game_id       VARCHAR(6),
-    team1_id      VARCHAR(6),
-    team2_id      VARCHAR(6),
+    tournament_id    VARCHAR(6),
+    game_id          VARCHAR(6),
+    team1_id         VARCHAR(6),
+    team2_id         VARCHAR(6),
+    match_winner_id  VARCHAR(6),
 
-    FOREIGN KEY (tournament_id) REFERENCES Tournament(tournament_id),
-    FOREIGN KEY (game_id)       REFERENCES Game(game_id),
-    FOREIGN KEY (team1_id)      REFERENCES Team(team_id),
-    FOREIGN KEY (team2_id)      REFERENCES Team(team_id)
+    FOREIGN KEY (tournament_id)   REFERENCES Tournament(tournament_id),
+    FOREIGN KEY (game_id)         REFERENCES Game(game_id),
+    FOREIGN KEY (team1_id)        REFERENCES Team(team_id),
+    FOREIGN KEY (team2_id)        REFERENCES Team(team_id),
+    FOREIGN KEY (match_winner_id) REFERENCES Team(team_id)
+
 );
 
 CREATE TABLE MatchCommentator(
@@ -202,6 +211,63 @@ CREATE TABLE TournamentCommentator(
     FOREIGN KEY (commentator_id) REFERENCES Commentator(commentator_id)
 );
 
+CREATE VIEW UpcomingTournament AS
+    SELECT T.tournament_id, 
+        T.tournament_name,
+        T.tournament_schedule, 
+        T.tournament_format, 
+        G.game_name 
+    FROM Tournament T
+    INNER JOIN Game G ON T.game_id = G.game_id
+    ORDER BY tournament_schedule;
+
+CREATE VIEW Format AS
+    SELECT tournament_id, 
+           tournament_name, 
+           tournament_format
+    FROM Tournament
+    ORDER BY tournament_schedule;
+
+CREATE VIEW PlacementPoints AS
+    SELECT P.placement_id, 
+           P.placement_rank, 
+           P.placement_points, 
+           P.placement_prize_amount,
+           TM.team_name,   
+           T.tournament_name
+    FROM Placement P
+    INNER JOIN Team TM On P.team_id = TM.team_id
+    INNER JOIN Tournament T On P.tournament_id = T.tournament_id
+    ORDER BY P.placement_points DESC;
+
+CREATE VIEW TournamentMatches AS
+    SELECT M.match_id, 
+           M.match_rounds, 
+           M.match_date_time, 
+           T1.team_name AS team1_name, 
+           T2.team_name AS team2_name,
+           WT.team_name AS winning_team_name,
+           T.tournament_name
+    FROM MatchInfo M
+    INNER JOIN Tournament T ON M.tournament_id = T.tournament_id
+    INNER JOIN Team T1 On M.team1_id = T1.team_id
+    INNER JOIN Team T2 On M.team2_id = T2.team_id
+    INNER JOIN TEAM WT On M.match_winner_id = WT.team_id
+    ORDER BY M.match_date_time;
+
+CREATE VIEW MatchTeams AS
+    SELECT TM.team_name, T.tournament_name
+    FROM Team TM
+    INNER JOIN TournamentTeam TT ON TM.team_id = TT.team_id
+    INNER JOIN Tournament T ON TT.tournament_id = T.tournament_id
+    ORDER BY TM.team_name;
+
+CREATE VIEW TeamWins AS
+    SELECT Distinct T.team_name, COUNT(*) AS wins
+    FROM Team T
+    INNER JOIN MatchInfo M ON T.team_id = M.match_winner_id
+    GROUP BY T.team_name;
+
 -- Populating The Tables --
 -- Games -- 
 INSERT INTO Game (game_id, game_name, game_rules, game_team_size) VALUES
@@ -220,12 +286,12 @@ INSERT INTO Tournament (tournament_id, tournament_name, tournament_rules, tourna
 ('T005', 'Overwatch League Finals', 'Best of 7 grand finals', '10 days', '2024-10-05 14:00:00', 'Playoffs');
 
 -- Matches --
-INSERT INTO MatchInfo (match_id, match_rounds, match_date_time, match_results) VALUES
-('M001', 5, '2024-10-15 15:00:00', 'Team A won 3-2 against Team B'),
-('M002', 3, '2024-10-16 18:00:00', 'Team C won 2-1 against Team D'),
-('M003', 5, '2024-11-20 16:00:00', 'Team E won 3-1 against Team F'),
-('M004', 3, '2024-09-01 13:00:00', 'Team G won 2-0 against Team H'),
-('M005', 7, '2024-08-10 17:00:00', 'Team I won 4-3 against Team J');
+INSERT INTO MatchInfo (match_id, match_rounds, match_date_time) VALUES
+('M001', 5, '2024-10-15 15:00:00'),
+('M002', 3, '2024-10-16 18:00:00'),
+('M003', 5, '2024-11-20 16:00:00'),
+('M004', 3, '2024-09-01 13:00:00'),
+('M005', 7, '2024-08-10 17:00:00');
 
 -- Teams --
 INSERT INTO Team (team_id, team_name, team_region, team_achievements, team_earnings) VALUES
@@ -248,13 +314,13 @@ INSERT INTO Player (player_id, player_username, player_real_name, player_role, p
 ('P008', 'Chronicle', 'Timofey Khromov', 'Initiator', 'Radiant', 'The Russian Wall', 21, 'Valorant');
 
 -- Placements --
-INSERT INTO Placement (placement_id, placement_rank, placement_points, placement_prize_amount) VALUES
-('PL001', '1st', '100', 50000.00),
-('PL002', '2nd', '75', 25000.00),
-('PL003', '3rd', '50', 150000.00),
-('PL004', '4th', '40', 100000.00),
-('PL005', '5th-6th', '30', 75000.00),
-('PL006', '7th-8th', '20', 50000.00);
+INSERT INTO Placement (placement_id, placement_rank, placement_points, placement_prize_amount, team_id, tournament_id) VALUES
+('PL001', '1st', '100', 50000.00, 'TM003', 'T001'),
+('PL002', '2nd', '75', 25000.00, 'TM002', 'T001'),
+('PL003', '3rd', '50', 150000.00, 'TM005', 'T002'),
+('PL004', '4th', '40', 100000.00, 'TM001', 'T003'),
+('PL005', '5th', '30', 75000.00, 'TM004', 'T004'),
+('PL006', '7th', '20', 50000.00, 'TM006', 'T005');
 
 -- Venues --
 INSERT INTO Venue (venue_id, venue_name, venue_location, venue_capacity) VALUES
@@ -311,3 +377,135 @@ INSERT INTO Coach (coach_id, coach_name, coach_specialty) VALUES
 ('CO003', 'Andreas Hoejsleth', 'Hero Selection and Game Theory'),
 ('CO004', 'Chet Singh', 'Agent Composition and Utility Usage'),
 ('CO005', 'Fabian Broich', 'Team Synergy and Communication');
+
+-- =========================
+-- 1) Link tournaments to game, venue, prize pool, organizer
+-- =========================
+UPDATE Tournament
+SET game_id = 'G001', venue_id = 'V004', prize_pool_id = 'PP001', organizer_id = 'O001'
+WHERE tournament_id = 'T001';  -- Worlds Championship 2024 -> LoL
+
+UPDATE Tournament
+SET game_id = 'G002', venue_id = 'V002', prize_pool_id = 'PP002', organizer_id = 'O002'
+WHERE tournament_id = 'T002';  -- CS2 Major Berlin -> CS2
+
+UPDATE Tournament
+SET game_id = 'G003', venue_id = 'V003', prize_pool_id = 'PP003', organizer_id = 'O003'
+WHERE tournament_id = 'T003';  -- The International 2024 -> Dota 2
+
+UPDATE Tournament
+SET game_id = 'G004', venue_id = 'V005', prize_pool_id = 'PP004', organizer_id = 'O004'
+WHERE tournament_id = 'T004';  -- Valorant Champions -> Valorant
+
+UPDATE Tournament
+SET game_id = 'G005', venue_id = 'V001', prize_pool_id = 'PP005', organizer_id = 'O005'
+WHERE tournament_id = 'T005';  -- OW League Finals -> Overwatch 2
+
+
+-- =========================
+-- 2) (Optional) link teams to managers/coaches (FKs on Team)
+-- =========================
+UPDATE Team SET manager_id = 'MG001', coach_id = 'CO004' WHERE team_id = 'TM001'; -- Cloud9
+UPDATE Team SET manager_id = 'MG005', coach_id = 'CO001' WHERE team_id = 'TM002'; -- T1
+UPDATE Team SET manager_id = 'MG004', coach_id = 'CO002' WHERE team_id = 'TM003'; -- FaZe
+UPDATE Team SET manager_id = 'MG002', coach_id = 'CO003' WHERE team_id = 'TM004'; -- Team Liquid
+UPDATE Team SET manager_id = 'MG003', coach_id = 'CO005' WHERE team_id = 'TM005'; -- Fnatic
+UPDATE Team SET manager_id = 'MG001', coach_id = 'CO001' WHERE team_id = 'TM006'; -- Gen.G
+
+
+-- =========================
+-- 3) Player ↔ Game (junction) so you can fetch players by game
+-- =========================
+INSERT INTO PlayerGame (player_id, game_id) VALUES
+('P001','G001'),  -- Faker -> LoL
+('P005','G001'),  -- Deft -> LoL
+('P002','G002'),  -- s1mple -> CS2
+('P006','G002'),  -- ZywOo -> CS2
+('P003','G003'),  -- N0tail -> Dota 2
+('P007','G003'),  -- Ceb -> Dota 2
+('P004','G004'),  -- TenZ -> Valorant
+('P008','G004');  -- Chronicle -> Valorant
+
+
+-- =========================
+-- 4) Team ↔ Player (rosters) for sample data
+-- =========================
+INSERT INTO TeamPlayer (team_id, player_id) VALUES
+('TM002','P001'),  -- T1: Faker
+('TM002','P005'),  -- T1: Deft
+('TM001','P004'),  -- Cloud9: TenZ
+('TM003','P006'),  -- FaZe: ZywOo
+('TM004','P003'),  -- Team Liquid: N0tail
+('TM005','P008');  -- Fnatic: Chronicle
+
+
+-- =========================
+-- 5) Tournament ↔ Team (entrants) + sample placements
+-- =========================
+INSERT INTO TournamentTeam (tournament_id, team_id, placement_id) VALUES
+('T001','TM002','PL001'), -- Worlds: T1 1st
+('T001','TM006','PL002'), -- Worlds: Gen.G 2nd
+('T001','TM001','PL005'), -- Worlds: Cloud9 5-6th
+('T001','TM005','PL006'), -- Worlds: Fnatic 7-8th
+
+('T002','TM003','PL001'), -- CS2 Major: FaZe 1st
+('T002','TM005','PL002'), -- CS2 Major: Fnatic 2nd
+
+('T003','TM004','PL001'), -- TI: Team Liquid 1st
+('T003','TM005','PL003'), -- TI: Fnatic 3rd
+
+('T004','TM001','PL002'), -- VCT Champs: Cloud9 2nd
+('T004','TM005','PL004'); -- VCT Champs: Fnatic 4th
+
+
+-- =========================
+-- 6) Tournament ↔ Sponsor / Commentator (samples)
+-- =========================
+INSERT INTO TournamentSponsor (tournament_id, sponsor_id) VALUES
+('T001','S001'), ('T001','S003'),
+('T002','S002'), ('T002','S003'),
+('T003','S003'), ('T003','S004'),
+('T004','S004'), ('T004','S005'),
+('T005','S001'), ('T005','S005');
+
+INSERT INTO TournamentCommentator (tournament_id, commentator_id) VALUES
+('T001','C001'), ('T001','C004'),
+('T002','C002'),
+('T003','C005'),
+('T004','C004'),
+('T005','C001');
+
+
+-- =========================
+-- 7) Update Matches to hook up game, tournament, teams
+-- =========================
+UPDATE MatchInfo
+SET tournament_id = 'T001', game_id = 'G001', team1_id = 'TM002', team2_id = 'TM006',  match_winner_id = 'TM002'
+WHERE match_id = 'M001';
+
+UPDATE MatchInfo
+SET tournament_id = 'T001', game_id = 'G001', team1_id = 'TM001', team2_id = 'TM005',  match_winner_id = 'TM005'
+WHERE match_id = 'M002';
+
+UPDATE MatchInfo
+SET tournament_id = 'T002', game_id = 'G002', team1_id = 'TM003', team2_id = 'TM005',  match_winner_id = 'TM005'
+WHERE match_id = 'M003';
+
+UPDATE MatchInfo
+SET tournament_id = 'T003', game_id = 'G003', team1_id = 'TM004', team2_id = 'TM005',  match_winner_id = 'TM004'
+WHERE match_id = 'M004';
+
+UPDATE MatchInfo
+SET tournament_id = 'T004', game_id = 'G004', team1_id = 'TM001', team2_id = 'TM005',  match_winner_id = 'TM005'
+WHERE match_id = 'M005';
+
+
+-- =========================
+-- 8) Match ↔ Commentator (samples)
+-- =========================
+INSERT INTO MatchCommentator (match_id, commentator_id) VALUES
+('M001','C001'), ('M001','C004'),
+('M002','C001'),
+('M003','C002'),
+('M004','C005'),
+('M005','C004');
