@@ -160,7 +160,7 @@ CREATE TABLE MatchInfo(
     FOREIGN KEY (tournament_id)   REFERENCES Tournament(tournament_id),
     FOREIGN KEY (game_id)         REFERENCES Game(game_id),
     FOREIGN KEY (team1_id)        REFERENCES Team(team_id),
-    FOREIGN KEY (team2_id)        REFERENCES Team(team_id)
+    FOREIGN KEY (team2_id)        REFERENCES Team(team_id),
     FOREIGN KEY (match_winner_id) REFERENCES Team(team_id)
 
 );
