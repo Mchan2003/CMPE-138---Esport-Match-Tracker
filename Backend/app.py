@@ -46,6 +46,7 @@ def get_db_connection():
         return None
 
 # ================== USER AUTHENTICATION ==================
+# For Demo: Admin Password = Admin123
 # Get user record from database using username
 def get_user_by_username(username: str):
         

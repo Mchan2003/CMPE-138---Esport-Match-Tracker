@@ -12,8 +12,13 @@ CREATE TABLE UserAccount (
     role           ENUM('admin', 'user') DEFAULT 'user'
 );
 
+-- For Demo: Admin Password = Admin123 ---
 INSERT INTO UserAccount (username, password_hash, role)
-VALUES ('admin', 'XXXXXXXXXX', 'admin');
+VALUES (
+	'admin', 
+    '$2b$12$YfT5gtnm6tC9RMmgAWeHrucD/w//0g4lL95lWEtAFvXMFnSHjMlEu', 
+    'admin'
+);
 
 CREATE TABLE Game(
     game_id VARCHAR(6) PRIMARY KEY, 
