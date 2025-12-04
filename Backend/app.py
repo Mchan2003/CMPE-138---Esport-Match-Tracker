@@ -8,23 +8,18 @@ import bcrypt                       # Library for hashing passwords
 
 load_dotenv()
 
-# Serve static files (index.html lives in ./static)
 app = Flask(__name__, static_folder="static")
-app.secret_key = "super_secret_key"  # required for session cookies
-
-
 @app.route("/")
 def index():
-    # when you go to http://127.0.0.1:5000/ this serves static/index.html
     return send_from_directory("static", "index.html")
-
+app.secret_key = 'super_secret_key' # required for session cookies
 
 # Database configuration
 db_config = {
     'host': 'localhost',
     'user': 'root',
     'password': os.getenv('DB_PASSWORD'), #make a .env file and store your mysql connection password
-    'database': 'MatchTracker'
+    'database': 'matchtracker'
 }
 
 VALID_TABLE = {
