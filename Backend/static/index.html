@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <title>Esports Match Tracker</title>
-    <meta name="description" content="">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="">
+    <meta name="description" content="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="" />
     <style>
       body {
         background-color: beige;
@@ -224,7 +224,7 @@
         border: 1px solid #ccc;
         border-radius: 6px;
       }
-      
+
       .modal-backdrop {
         position:fixed; inset:0; background:rgba(0,0,0,.5);
         display:none; align-items:center; justify-content:center; z-index:1000;
@@ -244,27 +244,34 @@
         <button id="btn-logout" class="btn btn-ghost hidden">Log out</button>
       </div>
     </header>
-  <div id="login-modal" class="modal-backdrop">
-    <div class="modal">
-    <h3>Log in</h3>
-    <div class="row">
-      <label>Username</label>
-      <input id="login-username" />
-    </div>
-    <div class="row">
-      <label>Password</label>
-      <input id="login-password" type="password" />
-    </div>
-    <div id="login-error" style="color:#b91c1c; margin-top:8px;"></div>
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
-      <button id="open-register-from-login" class="btn">Register</button>
-        <div style="display:flex; gap:8px;">
-          <button id="login-cancel" class="btn">Cancel</button>
-          <button id="login-submit" class="btn btn-primary">Log in</button>
+    <div id="login-modal" class="modal-backdrop">
+      <div class="modal">
+        <h3>Log in</h3>
+        <div class="row">
+          <label>Username</label>
+          <input id="login-username" />
+        </div>
+        <div class="row">
+          <label>Password</label>
+          <input id="login-password" type="password" />
+        </div>
+        <div id="login-error" style="color: #b91c1c; margin-top: 8px"></div>
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 14px;
+          "
+        >
+          <button id="open-register-from-login" class="btn">Register</button>
+          <div style="display: flex; gap: 8px">
+            <button id="login-cancel" class="btn">Cancel</button>
+            <button id="login-submit" class="btn btn-primary">Log in</button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
     <!-- REGISTER -->
     <div id="register-modal" class="modal-backdrop">
@@ -278,15 +285,32 @@
           <label>Password</label>
           <input id="register-password" type="password" />
         </div>
-        <div id="register-error" style="color:#b91c1c; margin-top:8px;"></div>
-        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
+        <div id="register-error" style="color: #b91c1c; margin-top: 8px"></div>
+        <div
+          style="
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 10px;
+          "
+        >
           <button id="register-cancel" class="btn">Back</button>
           <button id="register-submit" class="btn btn-primary">Create</button>
         </div>
       </div>
     </div>
 
-    <section id="admin-panel" class="hidden" style="margin:16px 0; padding:12px; border:1px solid #ddd; border-radius:8px; background:#fff;">
+    <section
+      id="admin-panel"
+      class="hidden"
+      style="
+        margin: 16px 0;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background: #fff;
+      "
+    >
       <h3>Admin: Manage entries</h3>
 
       <!-- INSERT -->
@@ -538,61 +562,236 @@
       });
     </script>
     <script>
+      // table_container
+      const selectView = document.getElementById("select_view");
+      const searchInput = document.getElementById("search");
+      const searchBtn = document.getElementById("search_btn");
+
+      // Function to fetch and display data
+      async function fetchData(endpoint, searchValue = "") {
+        const tableDiv = document.getElementById("table");
+
+        try {
+          // Show loading state
+          tableDiv.innerHTML = '<p class="loading">Loading...</p>';
+
+          // Prepare request options
+          const requestOptions = {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              search: searchValue,
+            }),
+          };
+
+          // Fetch data from API
+          const response = await fetch(endpoint, requestOptions);
+          console.log("Response status:", response.status);
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error("Error response:", errorData);
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          console.log(data);
+
+          // Display results in table
+          createTable(data);
+        } catch (error) {
+          console.error("Error fetching data:", error);
+          tableDiv.innerHTML = `<div class="error">Error loading data: ${error.message}</div>`;
+        }
+      }
+
+      selectView.addEventListener("change", async function () {
+        const view = this.value;
+        let input = searchInput.value;
+        let endpoint;
+
+        switch (view) {
+          case "Upcoming_Tournaments":
+            input = new Date().toISOString().slice(0, 19).replace("T", " ");
+            console.log("Formatted date:", input);
+            endpoint = "/upcomingTournaments";
+            break;
+          case "Tournament_Format":
+            endpoint = "/getFormat";
+            break;
+          case "Tournament_Placements":
+            endpoint = "/getPlacementPoints";
+            break;
+          case "Tournament_Matches":
+            endpoint = "/getMatchesInTournament";
+            break;
+          case "Tournament_Teams":
+            endpoint = "/getTeamsInTournament";
+            break;
+          case "Team_Wins":
+            endpoint = "/getTeamWins";
+            break;
+          default:
+            endpoint = null;
+            console.warn("Unknown view:", view);
+        }
+
+        if (endpoint) {
+          await fetchData(`http://127.0.0.1:5000${endpoint}`, input);
+        }
+      });
+
+      searchBtn.addEventListener("click", async function () {
+        const view = selectView.value;
+        const input = searchInput.value;
+        let endpoint;
+
+        switch (view) {
+          case "Upcoming_Tournaments":
+            input = new Date().toISOString().slice(0, 19).replace("T", " ");
+            console.log("Formatted date:", input);
+            endpoint = "/upcomingTournaments";
+            break;
+          case "Tournament_Format":
+            endpoint = "/getFormat";
+            break;
+          case "Tournament_Placements":
+            endpoint = "/getPlacementPoints";
+            break;
+          case "Tournament_Matches":
+            endpoint = "/getMatchesInTournament";
+            break;
+          case "Tournament_Teams":
+            endpoint = "/getTeamsInTournament";
+            break;
+          case "Team_Wins":
+            endpoint = "/getTeamWins";
+            break;
+          default:
+            endpoint = null;
+            console.warn("Unknown view:", view);
+        }
+
+        if (endpoint) {
+          await fetchData(endpoint, input);
+        }
+      });
+
+      function createTable(data) {
+        const tableDiv = document.getElementById("table");
+        if (!data || data.length === 0) {
+          tableDiv.innerHTML = "<p>No Entries Found</p>";
+          return;
+        }
+
+        const table = document.createElement("table");
+        const thead = document.createElement("thead");
+        const tbody = document.createElement("tbody");
+
+        const headers = Object.keys(data[0]);
+
+        const headerRow = document.createElement("tr");
+        headers.forEach((header) => {
+          const th = document.createElement("th");
+          th.textContent = header
+            .replace(/_/g, " ")
+            .replace(/\b\w/g, (char) => char.toUpperCase());
+          headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+
+        data.forEach((row) => {
+          const tr = document.createElement("tr");
+          headers.forEach((header) => {
+            const td = document.createElement("td");
+            td.textContent = row[header] || "-";
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+
+        table.appendChild(thead);
+        table.appendChild(tbody);
+        tableDiv.innerHTML = "";
+        tableDiv.appendChild(table);
+      }
+
+      window.addEventListener("DOMContentLoaded", () => {
+        const input = new Date().toISOString().slice(0, 19).replace("T", " ");
+        fetchData("http://127.0.0.1:5000/upcomingTournaments", input);
+      });
+    </script>
+    <script>
       // ----- helpers -----
       const API = ""; // change to "" if same-origin
-      const withCreds = (init={}) => ({ credentials: 'include', ...init });
+      const withCreds = (init = {}) => ({ credentials: "include", ...init });
 
-      function show(el){ el.classList.remove('hidden'); }
-      function hide(el){ el.classList.add('hidden'); }
+      function show(el) {
+        el.classList.remove("hidden");
+      }
+      function hide(el) {
+        el.classList.add("hidden");
+      }
 
       // ----- auth UI wiring -----
-      const statusEl = document.getElementById('auth-status');
-      const btnLogin = document.getElementById('btn-login');
-      const btnLogout = document.getElementById('btn-logout');
-      const adminPanel = document.getElementById('admin-panel');
+      const statusEl = document.getElementById("auth-status");
+      const btnLogin = document.getElementById("btn-login");
+      const btnLogout = document.getElementById("btn-logout");
+      const adminPanel = document.getElementById("admin-panel");
 
-      const loginModal = document.getElementById('login-modal');
-      const loginUser = document.getElementById('login-username');
-      const loginPass = document.getElementById('login-password');
-      const loginSubmit = document.getElementById('login-submit');
-      const loginCancel = document.getElementById('login-cancel');
-      const loginError = document.getElementById('login-error');
+      const loginModal = document.getElementById("login-modal");
+      const loginUser = document.getElementById("login-username");
+      const loginPass = document.getElementById("login-password");
+      const loginSubmit = document.getElementById("login-submit");
+      const loginCancel = document.getElementById("login-cancel");
+      const loginError = document.getElementById("login-error");
 
-      const registerModal = document.getElementById('register-modal');
-      const registerUser = document.getElementById('register-username');
-      const registerPass = document.getElementById('register-password');
-      const registerSubmit = document.getElementById('register-submit');
-      const registerCancel = document.getElementById('register-cancel');
-      const registerError = document.getElementById('register-error');
+      const registerModal = document.getElementById("register-modal");
+      const registerUser = document.getElementById("register-username");
+      const registerPass = document.getElementById("register-password");
+      const registerSubmit = document.getElementById("register-submit");
+      const registerCancel = document.getElementById("register-cancel");
+      const registerError = document.getElementById("register-error");
 
-      function openRegister(){
-        registerError.textContent = '';
-        registerUser.value = '';
-        registerPass.value = '';
-        registerModal.style.display = 'flex';
+      function openRegister() {
+        registerError.textContent = "";
+        registerUser.value = "";
+        registerPass.value = "";
+        registerModal.style.display = "flex";
         registerUser.focus();
       }
 
-      function closeRegister(){
-        registerModal.style.display = 'none';
+      function closeRegister() {
+        registerModal.style.display = "none";
       }
 
-      function openLogin(){ loginError.textContent=""; loginUser.value=""; loginPass.value=""; loginModal.style.display='flex'; loginUser.focus(); }
-      function closeLogin(){ loginModal.style.display='none'; }
+      function openLogin() {
+        loginError.textContent = "";
+        loginUser.value = "";
+        loginPass.value = "";
+        loginModal.style.display = "flex";
+        loginUser.focus();
+      }
+      function closeLogin() {
+        loginModal.style.display = "none";
+      }
 
-      btnLogin.addEventListener('click', openLogin);
-      loginCancel.addEventListener('click', closeLogin);
+      btnLogin.addEventListener("click", openLogin);
+      loginCancel.addEventListener("click", closeLogin);
 
-      const openRegisterFromLogin = document.getElementById('open-register-from-login');
+      const openRegisterFromLogin = document.getElementById(
+        "open-register-from-login"
+      );
       if (openRegisterFromLogin) {
-        openRegisterFromLogin.addEventListener('click', function(){
+        openRegisterFromLogin.addEventListener("click", function () {
           closeLogin();
           openRegister();
         });
       }
 
-
-      registerCancel.addEventListener('click', function(){
+      registerCancel.addEventListener("click", function () {
         closeRegister();
         openLogin();
       });
@@ -759,286 +958,63 @@
       // Check auth on load
       document.addEventListener("DOMContentLoaded", refreshAuth);
 
-      // table_container
-      const selectView = document.getElementById("select_view");
-      const searchInput = document.getElementById("search");
-      const searchBtn = document.getElementById("search_btn");
-
-      // Function to fetch and display data
-      async function fetchData(endpoint, searchValue = "") {
-        const tableDiv = document.getElementById("table");
-
+      registerSubmit.addEventListener("click", async function () {
+        registerError.textContent = "";
         try {
-          // Show loading state
-          tableDiv.innerHTML = '<p class="loading">Loading...</p>';
+          const resp = await fetch(
+            `${API}/register`,
+            withCreds({
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                username: registerUser.value.trim(),
+                password: registerPass.value,
+              }),
+            })
+          );
+          const data = await resp.json();
 
-          // Prepare request options
-          const requestOptions = {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              search: searchValue,
-            }),
-          };
-
-          // Fetch data from API
-          const response = await fetch(endpoint, requestOptions);
-          console.log("Response status:", response.status);
-
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            console.error("Error response:", errorData);
-            throw new Error(`HTTP error! status: ${response.status}`);
+          if (!resp.ok) {
+            registerError.textContent = data.error || "Registration failed";
+            return;
           }
 
-          const data = await response.json();
-          console.log(data);
+          // optional: auto-login right after successful registration
+          try {
+            const loginResp = await fetch(
+              `${API}/login`,
+              withCreds({
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  username: registerUser.value.trim(),
+                  password: registerPass.value,
+                }),
+              })
+            );
+            await loginResp.json();
+          } catch (e) {
+            console.error(e);
+          }
 
-          // Display results in table
-          createTable(data);
-        } catch (error) {
-          console.error("Error fetching data:", error);
-          tableDiv.innerHTML = `<div class="error">Error loading data: ${error.message}</div>`;
-        }
-      }
-
-      selectView.addEventListener("change", async function () {
-        const view = this.value;
-        let input = searchInput.value;
-        let endpoint;
-
-        switch (view) {
-          case "Upcoming_Tournaments":
-            input = new Date().toISOString().slice(0, 19).replace("T", " ");
-            console.log("Formatted date:", input);
-            endpoint = "/upcomingTournaments";
-            break;
-          case "Tournament_Format":
-            endpoint = "/getFormat";
-            break;
-          case "Tournament_Placements":
-            endpoint = "/getPlacementPoints";
-            break;
-          case "Tournament_Matches":
-            endpoint = "/getMatchesInTournament";
-            break;
-          case "Tournament_Teams":
-            endpoint = "/getTeamsInTournament";
-            break;
-          case "Team_Wins":
-            endpoint = "/getTeamWins";
-            break;
-          default:
-            endpoint = null;
-            console.warn("Unknown view:", view);
-        }
-
-        if (endpoint) {
-          await fetchData(`http://127.0.0.1:5000${endpoint}`, input);
+          closeRegister();
+          await refreshAuth();
+        } catch (e) {
+          registerError.textContent = e.message;
         }
       });
 
-      searchBtn.addEventListener("click", async function () {
-        const view = selectView.value;
-        const input = searchInput.value;
-        let endpoint;
-
-        switch (view) {
-          case "Upcoming_Tournaments":
-            input = new Date().toISOString().slice(0, 19).replace("T", " ");
-            console.log("Formatted date:", input);
-            endpoint = "/upcomingTournaments";
-            break;
-          case "Tournament_Format":
-            endpoint = "/getFormat";
-            break;
-          case "Tournament_Placements":
-            endpoint = "/getPlacementPoints";
-            break;
-          case "Tournament_Matches":
-            endpoint = "/getMatchesInTournament";
-            break;
-          case "Tournament_Teams":
-            endpoint = "/getTeamsInTournament";
-            break;
-          case "Team_Wins":
-            endpoint = "/getTeamWins";
-            break;
-          default:
-            endpoint = null;
-            console.warn("Unknown view:", view);
-        }
-
-        if (endpoint) {
-          await fetchData(endpoint, input);
-        }
-      });
-
-      function createTable(data) {
-        const tableDiv = document.getElementById("table");
-        if (!data || data.length === 0) {
-          tableDiv.innerHTML = "<p>No Entries Found</p>";
-          return;
-        }
-
-        const table = document.createElement("table");
-        const thead = document.createElement("thead");
-        const tbody = document.createElement("tbody");
-
-        const headers = Object.keys(data[0]);
-
-        const headerRow = document.createElement("tr");
-        headers.forEach((header) => {
-          const th = document.createElement("th");
-          th.textContent = header
-            .replace(/_/g, " ")
-            .replace(/\b\w/g, (char) => char.toUpperCase());
-          headerRow.appendChild(th);
-        });
-        thead.appendChild(headerRow);
-
-        data.forEach((row) => {
-          const tr = document.createElement("tr");
-          headers.forEach((header) => {
-            const td = document.createElement("td");
-            td.textContent = row[header] || "-";
-            tr.appendChild(td);
-          });
-          tbody.appendChild(tr);
-        });
-
-        table.appendChild(thead);
-        table.appendChild(tbody);
-        tableDiv.innerHTML = "";
-        tableDiv.appendChild(table);
-      }
-
-      window.addEventListener("DOMContentLoaded", () => {
-        const input = new Date().toISOString().slice(0, 19).replace("T", " ");
-        fetchData("http://127.0.0.1:5000/upcomingTournaments", input);
-      });
-  
-      registerSubmit.addEventListener('click', async function(){
-      registerError.textContent = '';
-      try {
-        const resp = await fetch(`${API}/register`, withCreds({
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username: registerUser.value.trim(),
-            password: registerPass.value
-          })
-        }));
-        const data = await resp.json();
-
-        if (!resp.ok) {
-          registerError.textContent = data.error || 'Registration failed';
-          return;
-        }
-
-        // optional: auto-login right after successful registration
+      btnLogout.addEventListener("click", async () => {
         try {
-          const loginResp = await fetch(`${API}/login`, withCreds({
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              username: registerUser.value.trim(),
-              password: registerPass.value
-            })
-          }));
-          await loginResp.json();
+          await fetch(`${API}/logout`, withCreds({ method: "POST" }));
+          await refreshAuth();
         } catch (e) {
           console.error(e);
         }
-
-        closeRegister();
-        await refreshAuth();
-      } catch (e) {
-        registerError.textContent = e.message;
-      }
-    });
-
-      btnLogout.addEventListener('click', async () => {
-        try {
-          await fetch(`${API}/logout`, withCreds({method:'POST'}));
-          await refreshAuth();
-        } catch(e) {
-          console.error(e);
-        }
-      });
-
-      // ----- Admin actions wiring -----
-      const insRun = document.getElementById('ins-run');
-      const insTable = document.getElementById('ins-table');
-      const insJson = document.getElementById('ins-json');
-      const insMsg = document.getElementById('ins-msg');
-
-      insRun.addEventListener('click', async () => {
-        insMsg.textContent = '';
-        let entry;
-        try { entry = JSON.parse(insJson.value); } catch(e){ insMsg.textContent='Invalid JSON'; return; }
-        try {
-          const resp = await fetch(`${API}/insertEntry`, withCreds({
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ table_name: insTable.value.trim(), entry })
-          }));
-          const data = await resp.json();
-          insMsg.textContent = resp.ok ? `Inserted id: ${data.id ?? '(OK)'}` : (data.error || 'Insert failed');
-        } catch(e){ insMsg.textContent = e.message; }
-      });
-
-      const updRun = document.getElementById('upd-run');
-      const updTable = document.getElementById('upd-table');
-      const updId = document.getElementById('upd-id');
-      const updJson = document.getElementById('upd-json');
-      const updMsg = document.getElementById('upd-msg');
-
-      updRun.addEventListener('click', async () => {
-        updMsg.textContent = '';
-        let update_colms;
-        try { update_colms = JSON.parse(updJson.value); } catch(e){ updMsg.textContent='Invalid JSON'; return; }
-        try {
-          const resp = await fetch(`${API}/updateEntry`, withCreds({
-            method:'PUT',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({
-              table_name: updTable.value.trim(),
-              id: updId.value.trim(),
-              update_colms
-            })
-          }));
-          const data = await resp.json();
-          updMsg.textContent = resp.ok ? `Rows affected: ${data.rows_affected}` : (data.error || 'Update failed');
-        } catch(e){ updMsg.textContent = e.message; }
-      });
-
-      const delRun = document.getElementById('del-run');
-      const delTable = document.getElementById('del-table');
-      const delId = document.getElementById('del-id');
-      const delMsg = document.getElementById('del-msg');
-
-      delRun.addEventListener('click', async () => {
-        delMsg.textContent = '';
-        try {
-          const resp = await fetch(`${API}/deleteEntry`, withCreds({
-            method:'DELETE',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({
-              table_name: delTable.value.trim(),
-              id: delId.value.trim()
-            })
-          }));
-          const data = await resp.json();
-          delMsg.textContent = resp.ok ? `Rows affected: ${data.rows_affected}` : (data.error || 'Delete failed');
-        } catch(e){ delMsg.textContent = e.message; }
       });
 
       // Check auth on load
-      document.addEventListener('DOMContentLoaded', refreshAuth);
+      document.addEventListener("DOMContentLoaded", refreshAuth);
     </script>
-
   </body>
 </html>
