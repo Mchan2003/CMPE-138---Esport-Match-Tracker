@@ -214,19 +214,22 @@ CREATE TABLE TournamentCommentator(
 
 CREATE VIEW UpcomingTournament AS
     SELECT T.tournament_id, 
-        T.tournament_name,
-        T.tournament_schedule, 
-        T.tournament_format, 
-        G.game_name 
+           T.tournament_name,
+           T.tournament_schedule, 
+           T.tournament_format, 
+           G.game_name 
     FROM Tournament T
     INNER JOIN Game G ON T.game_id = G.game_id
     ORDER BY tournament_schedule;
 
 CREATE VIEW Format AS
-    SELECT tournament_id, 
-           tournament_name, 
-           tournament_format
-    FROM Tournament
+    SELECT T.tournament_id, 
+           T.tournament_name,
+           T.tournament_schedule, 
+           T.tournament_format, 
+           G.game_name 
+    FROM Tournament T
+    INNER JOIN Game G ON T.game_id = G.game_id
     ORDER BY tournament_schedule;
 
 CREATE VIEW PlacementPoints AS
@@ -239,7 +242,7 @@ CREATE VIEW PlacementPoints AS
     FROM Placement P
     INNER JOIN Team TM On P.team_id = TM.team_id
     INNER JOIN Tournament T On P.tournament_id = T.tournament_id
-    ORDER BY P.placement_points DESC;
+    ORDER BY P.placement_points;
 
 CREATE VIEW TournamentMatches AS
     SELECT M.match_id, 
@@ -256,7 +259,7 @@ CREATE VIEW TournamentMatches AS
     INNER JOIN TEAM WT On M.match_winner_id = WT.team_id
     ORDER BY M.match_date_time;
 
-CREATE VIEW MatchTeams AS
+CREATE VIEW TournamentTeams AS
     SELECT TM.team_name, T.tournament_name
     FROM Team TM
     INNER JOIN TournamentTeam TT ON TM.team_id = TT.team_id
@@ -264,10 +267,30 @@ CREATE VIEW MatchTeams AS
     ORDER BY TM.team_name;
 
 CREATE VIEW TeamWins AS
-    SELECT Distinct T.team_name, COUNT(*) AS wins
-    FROM Team T
-    INNER JOIN MatchInfo M ON T.team_id = M.match_winner_id
-    GROUP BY T.team_name;
+    SELECT TM.team_name,
+           T.tournament_name,
+           COUNT(*) AS wins
+    FROM Team TM
+    INNER JOIN MatchInfo M ON TM.team_id = M.match_winner_id
+    INNER JOIN Tournament T ON M.tournament_id = T.tournament_id
+    GROUP BY TM.team_name, T.tournament_name;
+
+-- CREATE VIEW TeamPlayers AS
+--     SELECT T.team_name, P.player_real_name, P.player_real_name
+--     FROM Player P
+--     INNER JOIN TeamPlayer TP ON P.player_id = TP.player_id
+--     INNER JOIN Team T ON T.team_id = TP.team_id
+--     GROUP BY T.Team_name;
+
+-- CREATE VIEW GameInfo AS
+--     SELECT TM.team_name, T.tournament_name, O,organizer_name
+--     FROM Team TM
+--     INNER JOIN TournamentTeam TT ON TM.team_id = TT.team_id
+--     INNER JOIN Tournament T ON TT.tournament_id = T.tournament_id
+--     INNER JOIN Organizer O ON T.organizer_id = O.organizer_id
+--     GROUP BY T.tournament_schedule
+--     ORDER BY T.tournament_schedule DESC;
+
 
 -- Populating The Tables --
 -- Games -- 

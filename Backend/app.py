@@ -4,15 +4,18 @@ import mysql.connector
 from mysql.connector import Error
 from dotenv import load_dotenv
 import os
-import bcrypt                       # Library for hashing passwords
+import bcrypt   
+from flask_cors import CORS                    # Library for hashing passwords
 
 load_dotenv()
 
 app = Flask(__name__, static_folder="static")
+app.secret_key = 'super_secret_key' # required for session cookies
+CORS(app)
+
 @app.route("/")
 def index():
     return send_from_directory("static", "index.html")
-app.secret_key = 'super_secret_key' # required for session cookies
 
 # Database configuration
 db_config = {
@@ -402,15 +405,19 @@ def upcoming_tournaments():
 
     try: 
         data = request.get_json(force=True)
-        current_time = data.get('current_time')
+        current_time = data.get('search')
+        print(current_time)
         current_time = datetime.strptime(current_time, "%Y-%m-%d %H:%M:%S")
 
         if current_time is None:
             return jsonify({'error': 'Invalid input. Check json key format'}), 400
 
         cursor = connection.cursor(dictionary=True)
-        query = """SELECT * 
-                    FROM UpcomingTournament 
+        query = """SELECT UT.tournament_name,
+                          UT.tournament_schedule, 
+                          UT.tournament_format, 
+                          UT.game_name 
+                    FROM UpcomingTournament UT
                     WHERE tournament_schedule >= %s """ 
         cursor.execute(query, (current_time,))
         entries = cursor.fetchall()
@@ -436,15 +443,17 @@ def get_format():
 
     try: 
         data = request.get_json(force=True)
-        format = data.get('format')
+        format = data.get('search')
 
         if format is None:
             return jsonify({'error': 'Invalid input. Check json key format: format)'}), 400
 
         cursor = connection.cursor(dictionary=True)
-        query = """SELECT *
-                   FROM Format
-                   WHERE tournament_format = %s;""" 
+        query = """SELECT UT.tournament_name,
+                          UT.tournament_schedule, 
+                          UT.game_name 
+                    FROM UpcomingTournament UT
+                    WHERE tournament_format = %s """ 
         cursor.execute(query, (format,))
         entries = cursor.fetchall()
         cursor.close()
@@ -469,15 +478,22 @@ def get_placement_points():
 
     try: 
         data = request.get_json(force=True)
-        tournament_name = data.get('tournament_name')
+        tournament_name = data.get('search')
 
         if tournament_name is None:
             return jsonify({'error': 'Invalid input. Check json key format: format)'}), 400
 
         cursor = connection.cursor(dictionary=True)
-        query = """SELECT *  
-                   FROM PLacementPoints
-                   WHERE tournament_name = %s;""" 
+        query = """
+            SELECT PP.team_name, 
+                PP.placement_rank AS placement_rank, 
+                PP.placement_points AS points, 
+                PP.placement_prize_amount AS prize_amount, 
+                PP.tournament_name AS tournament
+            FROM PlacementPoints PP
+            WHERE tournament_name = %s
+            ORDER BY PP.placement_rank;
+        """
         cursor.execute(query, (tournament_name,))
         entries = cursor.fetchall()
         cursor.close()
@@ -502,15 +518,20 @@ def get_matches_in_tournament():
 
     try: 
         data = request.get_json(force=True)
-        tournament_name = data.get('tournament_name')
+        tournament_name = data.get('search')
 
         if tournament_name is None:
             return jsonify({'error': 'Invalid input. Check json key format: format)'}), 400
 
         cursor = connection.cursor(dictionary=True)
-        query = """SELECT *
-                   FROM TournamentMatches
-                   WHERE tournament_name = %s;""" 
+        query = """SELECT TNM.match_date_time AS schedule, 
+                          TNM.match_rounds AS rounds, 
+                          TNM.team1_name, 
+                          TNM.team2_name,
+                          TNM.winning_team_name
+                FROM TournamentMatches TNM
+                WHERE TNM.tournament_name = %s
+                ORDER BY TNM.match_date_time;"""
         cursor.execute(query, (tournament_name,))
         entries = cursor.fetchall()
         cursor.close()
@@ -526,8 +547,8 @@ def get_matches_in_tournament():
         if connection:
             connection.close()
 
-@app.route('/getTeamsInMatch', methods=['POST']) 
-def get_teams_in_match():
+@app.route('/getTeamsInTournament', methods=['POST']) 
+def get_teams_in_tournament():
     connection = get_db_connection()
     if connection is None:
         return jsonify({'error': 'Database connection failed'}), 500
@@ -535,14 +556,13 @@ def get_teams_in_match():
 
     try: 
         data = request.get_json(force=True)
-        tournament_name = data.get('tournament_name')
+        tournament_name = data.get('search')
 
         if tournament_name is None:
-            return jsonify({'error': 'Invalid input. Check json key format: format)'}), 400
-
+            return jsonify({'error': 'Invalid input. Check json key format', 'received_keys': list(data.keys())}), 400                                               
         cursor = connection.cursor(dictionary=True)
         query = """SELECT team_name
-                   FROM MatchTeams
+                   FROM TournamentTeams
                    WHERE tournament_name = %s;""" 
         cursor.execute(query, (tournament_name,))
         entries = cursor.fetchall()
@@ -568,15 +588,16 @@ def get_team_wins():
 
     try: 
         data = request.get_json(force=True)
-        team_name = data.get('team_name')
+        team_name = data.get('search')
 
         if team_name is None:
             return jsonify({'error': 'Invalid input. Check json key format: format)'}), 400
 
         cursor = connection.cursor(dictionary=True)
-        query = """SELECT *
-                   FROM TeamWins
-                   WHERE team_name = %s;""" 
+        query = """SELECT TW.tournament_name, TW.wins
+                FROM TeamWins TW 
+                WHERE TW.team_name = %s
+                ORDER BY TW.wins DESC"""
         cursor.execute(query, (team_name,))
         entries = cursor.fetchall()
         cursor.close()
